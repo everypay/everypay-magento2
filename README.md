@@ -1,7 +1,7 @@
 # EveryPay Magento 2 payment gateway module 
 
 
-##Installation Instructions
+## Installation Instructions
 
 ## Step 1: Create payment method module
 
