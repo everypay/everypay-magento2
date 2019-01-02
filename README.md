@@ -3,8 +3,6 @@
 
 ## Installation Instructions
 
-## Step 1: Create payment method module
-
 1. Extract zip file to app/code folder (create it if it does not exist)
 
 2. from magento root run : bin/magento setup:upgrade
