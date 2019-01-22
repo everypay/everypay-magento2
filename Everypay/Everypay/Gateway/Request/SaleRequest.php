@@ -42,23 +42,33 @@ class SaleRequest implements BuilderInterface
         /** @var PaymentDataObjectInterface $payment */
         $payment = $buildSubject['payment'];
         $order = $payment->getOrder();
+        $customer_id = $order->getCustomerId();
         $address = $order->getShippingAddress();
 
         $paymentX = $payment->getPayment();
 
         $token = $paymentX->getAdditionalInformation('token');
+        $customer_token = $paymentX->getAdditionalInformation('customer_token');
+        $card_token = $paymentX->getAdditionalInformation('card_token');
+        $save_card = $paymentX->getAdditionalInformation('save_card');
+        $everypay_vault = $paymentX->getAdditionalInformation('everypay_vault');
+        $removed_cards = $paymentX->getAdditionalInformation('removed_cards');
+        $empty_vault = $paymentX->getAdditionalInformation('empty_vault');
 
         return [
             'TXN_TYPE' => 'S',
             'INVOICE' => $order->getOrderIncrementId(),
             'AMOUNT' => $order->getGrandTotalAmount(),
             'CURRENCY' => $order->getCurrencyCode(),
-            'EMAIL' => $address->getEmail(),
-            'MERCHANT_KEY' => $this->config->getValue(
-                'merchant_gateway_key',
-                $order->getStoreId()
-            ),
-            'token' => $token
+            'EMAIL' => (isset($address))?$address->getEmail():'',
+            'token' => $token,
+            'customer_token' => $customer_token,
+            'card_token' => $card_token,
+            'save_card' => $save_card,
+            'everypay_vault' => $everypay_vault,
+            'customer_id' => $customer_id,
+            'removed_cards' => $removed_cards,
+            'empty_vault' => $empty_vault
         ];
     }
 }

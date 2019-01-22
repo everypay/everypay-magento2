@@ -42,6 +42,12 @@ final class ConfigProvider implements ConfigProviderInterface
                     'locale' => $this->epConfig->getLocale(),
                     'token' => null,
                     'installments' => $this->epConfig->getInstallmentsPlan(),
+                    'saveCard' => false,
+                    'customerToken' => null,
+                    'cardToken' =>  null,
+                    'everypayVault' => null,
+                    'removedCards' => null,
+                    'emptyVault' => false
                 ]
             ]
         ];

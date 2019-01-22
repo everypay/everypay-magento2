@@ -25,6 +25,22 @@
             <!--/ko-->
         </div>
 
+        <div data-bind="if: customerLoggedIn()">
+            <div data-bind="if: everypayVaultExists()"><span><strong>EveryPay Vault</strong></span>
+                <div data-bind="foreach: getSavedCards()">
+                       <input class="everypay-vault-radio" type="radio" name="card" data-bind="value: custToken +';'+crdToken, click: setVault">
+                       <span data-bind="text: name"></span>&nbsp
+                       <button data-bind="click: $parent.removeCard"><b>X</b></button>
+                       <br>
+                </div>
+                <span id="everypay-new-card"><a href="#" data-bind="click: clearRadios(), text: $t('Use a new card')"></a></span><br>
+            </div>
+
+            <div  id="everypay-save-card-container">
+                <input type="checkbox" id="everypay-save-card" data-bind="click: setSaveCard()"/><span data-bind="text: $t('I want to store my card for future use')"></span>
+            </div>
+        </div>
+
 
         <form class="payment-card-form" method="POST" action="#" id="everypay-payment-form">
             <div  class="button-holder" style="display:none;"></div>
