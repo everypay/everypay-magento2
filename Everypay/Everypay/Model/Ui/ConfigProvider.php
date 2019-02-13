@@ -47,7 +47,8 @@ final class ConfigProvider implements ConfigProviderInterface
                     'cardToken' =>  null,
                     'everypayVault' => null,
                     'removedCards' => null,
-                    'emptyVault' => false
+                    'emptyVault' => false,
+                    'max_installments' => null
                 ]
             ]
         ];

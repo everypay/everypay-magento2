@@ -97,6 +97,8 @@ class ClientSale implements ClientInterface
             $token = $requestData['token'];
             $customerEmail = $requestData['EMAIL'];
             $orderNumber = $requestData['INVOICE'];
+            $amount = floatval($requestData['AMOUNT'])*100;
+            $maxInstallments = intval($requestData['max_installments']);
 
             Everypay::setApiKey($this->_publicKey);
 
@@ -110,10 +112,13 @@ class ClientSale implements ClientInterface
 
             $params = array(
                 'token'         => $token->token,
-                'amount'        => $token->amount,
+                'amount'        => $amount,
                 'payee_email'   => $customerEmail,
                 'description'   => 'Order: ' . $orderNumber,
             );
+            if($maxInstallments > 0){
+                $params['max_installments'] = $maxInstallments;
+            }
         }
 
 
@@ -122,6 +127,8 @@ class ClientSale implements ClientInterface
             $token = $requestData['token'];
             $customerEmail = $requestData['EMAIL'];
             $orderNumber = $requestData['INVOICE'];
+            $amount = floatval($requestData['AMOUNT'])*100;
+            $maxInstallments = intval($requestData['max_installments']);
 
 
             Everypay::setApiKey($this->_publicKey);
@@ -142,7 +149,7 @@ class ClientSale implements ClientInterface
             if($existing_customer !== '' ){
                 $card_token = $token->token;
                 $params = array(
-                  'token' => $card_token
+                    'token' => $card_token
                 );
                 Everypay::setApiKey($this->_secretKey);
                 $response = Customer::update($existing_customer,$params);
@@ -152,16 +159,19 @@ class ClientSale implements ClientInterface
                     $card_token = $response->cards->data[0]->token;
                     $params = array(
                         'token'         => $existing_customer,
-                        'amount'        => $token->amount,
+                        'amount'        => $amount,
                         'payee_email'   => $customerEmail,
                         'description'   => 'Order: ' . $orderNumber,
                         'card'          => $card_token
                     );
+                    if($maxInstallments > 0){
+                        $params['max_installments'] = $maxInstallments;
+                    }
                 }
             }else{
                 $params = array(
                     'token'         => $token->token,
-                    'amount'        => $token->amount,
+                    'amount'        => $amount,
                     'payee_email'   => $customerEmail,
                     'description'   => 'Order: ' . $orderNumber,
                     'create_customer' => 1
@@ -214,10 +224,10 @@ class ClientSale implements ClientInterface
                 $vault = $requestData['everypay_vault'];
 
                 $new_card = [
-                        'custToken' => $customerToken,
-                        'crdToken' => $cardToken,
-                        'name' => $name
-                    ];
+                    'custToken' => $customerToken,
+                    'crdToken' => $cardToken,
+                    'name' => $name
+                ];
 
                 $this->updateCustomer($requestData['customer_id'], $new_card, $vault);
             }
@@ -355,7 +365,7 @@ class ClientSale implements ClientInterface
             $vault = json_decode($vault,true);
 
             if (key_exists('cards',$vault)){
-                   return $vault['cards'][0]['custToken'];
+                return $vault['cards'][0]['custToken'];
             }
         }
         return '';
@@ -374,8 +384,8 @@ class ClientSale implements ClientInterface
         $new_default_card = $vault[0]['crdToken'];
 
         $data = [
-          'card' => $new_default_card,
-          'default_card' => 1
+            'card' => $new_default_card,
+            'default_card' => 1
         ];
 
         $post_data = http_build_query($data);
@@ -498,10 +508,10 @@ class ClientSale implements ClientInterface
             return;
         }
 
-            $customer = $this->_customerRepositoryInterface->getById($customerId);
+        $customer = $this->_customerRepositoryInterface->getById($customerId);
 
-            $customer->setCustomAttribute('everypay_vault', $vault_data);
-            $this->_customerRepositoryInterface->save($customer);
+        $customer->setCustomAttribute('everypay_vault', $vault_data);
+        $this->_customerRepositoryInterface->save($customer);
 
 
     }

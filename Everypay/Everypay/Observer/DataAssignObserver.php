@@ -21,6 +21,7 @@ class DataAssignObserver extends AbstractDataAssignObserver
     const EVERYPAY_VAULT = 'everypay_vault';
     const REMOVED_CARDS = 'removed_cards';
     const EMPTY_VAULT = 'empty_vault';
+    const MAX_INSTALLMENTS = 'max_installments';
     /**
      * @var array
      */
@@ -32,7 +33,8 @@ class DataAssignObserver extends AbstractDataAssignObserver
         self::SAVE_CARD,
         self::EVERYPAY_VAULT,
         self::REMOVED_CARDS,
-        SELF::EMPTY_VAULT
+        self::EMPTY_VAULT,
+        self::MAX_INSTALLMENTS
     ];
 
     /**

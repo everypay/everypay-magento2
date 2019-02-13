@@ -54,6 +54,7 @@ class SaleRequest implements BuilderInterface
         $everypay_vault = $paymentX->getAdditionalInformation('everypay_vault');
         $removed_cards = $paymentX->getAdditionalInformation('removed_cards');
         $empty_vault = $paymentX->getAdditionalInformation('empty_vault');
+        $max_installments = $paymentX->getAdditionalInformation('max_installments');
 
         return [
             'TXN_TYPE' => 'S',
@@ -68,7 +69,8 @@ class SaleRequest implements BuilderInterface
             'everypay_vault' => $everypay_vault,
             'customer_id' => $customer_id,
             'removed_cards' => $removed_cards,
-            'empty_vault' => $empty_vault
+            'empty_vault' => $empty_vault,
+            'max_installments' => $max_installments
         ];
     }
 }

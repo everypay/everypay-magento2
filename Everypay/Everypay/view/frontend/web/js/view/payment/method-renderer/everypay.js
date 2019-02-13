@@ -43,7 +43,8 @@ define(
                 everypayVault: '',
                 savedCards: [],
                 removedCards: '',
-                emptyVault: false
+                emptyVault: false,
+                maxInstallments: ''
             },
 
             initObservable: function () {
@@ -58,7 +59,8 @@ define(
                         'everypayVault',
                         'savedCards',
                         'removedCards',
-                        'emptyVault'
+                        'emptyVault',
+                        'maxInstallments'
 
                     ]);
                 return this;
@@ -74,7 +76,7 @@ define(
 
             getTotal: function() {
                 var data = {
-                    'total' : this.getTotals().grand_total*100
+                    'total' : this.getTotals().base_grand_total*100
                 }
                 return data;
             },
@@ -93,6 +95,9 @@ define(
 
                         }
                     })
+                }
+                if(installments > 0){
+                    window.checkoutConfig.payment.everypay.maxInstallments = installments;
                 }
                 return installments;
 
@@ -218,7 +223,8 @@ define(
                         card_token: window.checkoutConfig.payment.everypay.cardToken,
                         everypay_vault: xvault,
                         removed_cards: window.checkoutConfig.payment.everypay.removedCards,
-                        empty_vault: window.checkoutConfig.payment.everypay.emptyVault
+                        empty_vault: window.checkoutConfig.payment.everypay.emptyVault,
+                        max_installments: window.checkoutConfig.payment.everypay.maxInstallments
                     }
                 };
                 data['additional_data'] = _.extend(data['additional_data'], this.additionalData);
