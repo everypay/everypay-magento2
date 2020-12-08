@@ -9,12 +9,12 @@ define(
         'jquery',
         'ko',
         'Magento_Checkout/js/view/payment/default',
-        'Everypay_Everypay/js/everypay',
         'Magento_Checkout/js/model/quote',
         'Magento_Checkout/js/model/totals',
-        'EverypayModal'
+        'Payform',
+        'EverypayModal',
     ],
-    function ($, ko, Component, quote, totals) {
+    function ($, ko, Component, quote, totals, Payform) {
         'use strict';
         var savedCards = ko.observableArray([]);
 
@@ -50,8 +50,19 @@ define(
 
             initialize: function () {
                 this._super();
+                this.setBillingAddress();
                 this.EverypayModal = new EverypayModal();
+                this.preparePayform();
                 return this;
+            },
+
+            preparePayform: function () {
+
+                this.amount = this.getTotal().total;
+                let payload = Payform.createPayload(this.amount, this.billingAddress, []);
+
+                Payform.preload(payload, this.EverypayModal);
+
             },
 
             initObservable: function () {
@@ -71,6 +82,15 @@ define(
 
                     ]);
                 return this;
+            },
+
+            setBillingAddress: function () {
+               let billingData = quote.billingAddress();
+
+               if (billingData.street[0])
+                   this.billingAddress = billingData.street[0];
+               else
+                   this.billingAddress = '';
             },
 
             getCode: function() {
@@ -243,34 +263,12 @@ define(
                 return window.checkoutConfig.payment.everypay.fixedamount;
             },
 
-
-            makeButton: function(){
-                var xdata = this.getTotal();
-                var installments = this.getInstallments();
-                    var EVERYPAY_DATA = {
-                        amount: xdata.total,
-                        key: window.checkoutConfig.payment.everypay.publicKey,
-                        locale: window.checkoutConfig.payment.everypay.locale,
-                        sandbox: window.checkoutConfig.payment.everypay.sandboxMode,
-                        max_installments: installments,
-                        callback: 'epcallback'
-                    }
-                    var loadButton = setInterval(function () {
-                        try {
-                            EverypayButton.jsonInit(EVERYPAY_DATA, $("#everypay-payment-form"));
-                            clearInterval(loadButton);
-                        } catch (err) { console.log(err) }
-                        $('.everypay-button').click();
-                    }, 100);
-            },
-
             clickEverypayButton: function(){
 
-                return;
                 if ($("input[name='card']:checked").val()){
                     $('#epPlaceOrder').click();
                 }else{
-                    this.makeButton();
+                    this.EverypayModal.open();
                 }
 
             },
