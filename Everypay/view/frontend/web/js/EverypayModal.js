@@ -113,13 +113,14 @@ let EverypayModal = function () {
             border: 1px solid #888;
             min-width: 35vw;
             max-width: 35vw;
-            min-height: 25rem;
+            min-height: 38vh;
             box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
             -webkit-animation-name: everypayModalAnimation;
             -webkit-animation-duration: 0.4s;
             animation-name: everypayModalAnimation;
             animation-duration: 0.4s;
             margin-top: 1vw;
+            border-radius: 5px;
         }
         @-webkit-keyframes everypayModalAnimation {
             from {top:-300px; opacity:0} to {top:10vw; opacity:1}
@@ -169,8 +170,8 @@ let EverypayModal = function () {
         }
 
         #everypay-logo  svg {
-            margin-left: 1vw;
-            height: 1.6rem;
+            margin-left: 1.2vw;
+            height: 3vh;
         }
 
         #everypay-secure-logos {
@@ -188,10 +189,10 @@ let EverypayModal = function () {
         /*  mobile phones */
         @media only screen and (max-width: 767px) {
 
-            #everypay-modal-content {
-                min-width: 100vw;
-                min-height: 25rem;
-            }
+        #everypay-modal-content {
+           min-width: 100vw;
+           min-height: 50vh;
+        }
 
             #everypay-modal-header span {
                 min-width: 6vw;
@@ -200,6 +201,8 @@ let EverypayModal = function () {
             }
 
             #everypay-logo {
+                margin-top: 5vh;
+                margin-bottom: 2vh;
                 flex-direction: row;
             }
 
@@ -212,8 +215,8 @@ let EverypayModal = function () {
         /* large screens */
         @media screen and (min-width: 1900px) {
             #everypay-modal-content {
-                min-width: 30vw;
-                max-width: 30vw;
+                min-width: 25vw;
+                max-width: 25vw;
             }
         }
 
@@ -234,11 +237,11 @@ let EverypayModal = function () {
         }
 
         /* Tablets */
-        @media only screen and (min-device-width : 768px) and (max-device-width : 1024px) {
+        @media only screen and (min-device-width : 768px) and (max-device-width : 1366px) {
             #everypay-modal-content {
                 min-width: 60vw;
                 max-width: 60vw;
-                min-height: 25rem;
+                height: 25vh;
             }
 
             #everypay-secure-logos {
