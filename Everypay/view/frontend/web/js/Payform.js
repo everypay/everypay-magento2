@@ -27,6 +27,10 @@ define([
                     },
                 }
             };
+
+           if (installments.payform)
+            payload.installments = installments.payform;
+
            return payload;
         },
 

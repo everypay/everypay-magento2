@@ -113,7 +113,7 @@ let EverypayModal = function () {
             border: 1px solid #888;
             min-width: 35vw;
             max-width: 35vw;
-            min-height: 38vh;
+            min-height: 43vh;
             box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
             -webkit-animation-name: everypayModalAnimation;
             -webkit-animation-duration: 0.4s;
@@ -215,8 +215,8 @@ let EverypayModal = function () {
         /* large screens */
         @media screen and (min-width: 1900px) {
             #everypay-modal-content {
-                min-width: 25vw;
-                max-width: 25vw;
+                min-width: 24vw;
+                max-width: 24vw;
             }
         }
 

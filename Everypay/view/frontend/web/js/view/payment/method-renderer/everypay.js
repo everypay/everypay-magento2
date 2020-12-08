@@ -57,11 +57,11 @@ define(
             },
 
             preparePayform: function () {
-
+                let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
-                let payload = Payform.createPayload(this.amount, this.billingAddress, []);
+                let payload = Payform.createPayload(this.amount, this.billingAddress, installments);
 
-                Payform.preload(payload, this.EverypayModal);
+                Payform.preload(payload, this.EverypayModal, installments);
 
             },
 
@@ -110,24 +110,39 @@ define(
 
 
             getInstallments: function(){
-                var installments=0;
-                var total = this.getTotals().grand_total;
-                var plan = window.checkoutConfig.payment.everypay.installments;
+                let max_installments = 0;
+                let total = this.getTotals().grand_total;
+                let plan = window.checkoutConfig.payment.everypay.installments;
 
                 if (plan.length>0){
                     $.each(plan, function(i,v){
                         if (parseFloat(v[1])>=total){
-                            installments=parseInt(v[0]);
+                            max_installments = parseInt(v[0]);
                             return false;
-
                         }
                     })
                 }
-                if(installments > 0){
-                    window.checkoutConfig.payment.everypay.maxInstallments = installments;
-                }
-                return installments;
 
+                let payform_installments = [];
+
+                if ( max_installments > 0){
+
+                    window.checkoutConfig.payment.everypay.maxInstallments = max_installments;
+                    let y = 2;
+                    for (let i = 2; i <= max_installments; i += y) {
+                        if (i >= 12)
+                            y = 12;
+
+                        payform_installments.push(i);
+                    }
+
+                    return {
+                        max_installments: max_installments,
+                        payform: payform_installments
+                    };
+                }
+
+                return false;
             },
 
             getTransactionResults: function() {
