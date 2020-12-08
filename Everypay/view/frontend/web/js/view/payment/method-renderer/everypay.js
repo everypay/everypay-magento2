@@ -11,7 +11,8 @@ define(
         'Magento_Checkout/js/view/payment/default',
         'Everypay_Everypay/js/everypay',
         'Magento_Checkout/js/model/quote',
-        'Magento_Checkout/js/model/totals'
+        'Magento_Checkout/js/model/totals',
+        'EverypayModal'
     ],
     function ($, ko, Component, quote, totals) {
         'use strict';
@@ -45,6 +46,12 @@ define(
                 removedCards: '',
                 emptyVault: false,
                 maxInstallments: ''
+            },
+
+            initialize: function () {
+                this._super();
+                this.EverypayModal = new EverypayModal();
+                return this;
             },
 
             initObservable: function () {
@@ -258,6 +265,8 @@ define(
             },
 
             clickEverypayButton: function(){
+
+                return;
                 if ($("input[name='card']:checked").val()){
                     $('#epPlaceOrder').click();
                 }else{
