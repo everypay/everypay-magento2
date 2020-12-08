@@ -56,6 +56,15 @@ define(
                 return this;
             },
 
+            payWithSavedCard: function () {
+                let installments  = this.getInstallments();
+                let amount = this.getTotal().total;
+
+                let payload = Payform.createTokenizationPayload(this.billingAddress, amount, installments);
+
+                Payform.tokenize(payload, this.EverypayModal);
+            },
+
             preparePayform: function () {
                 let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
@@ -197,6 +206,10 @@ define(
                 if (this.everypayVaultExists()) {
                     var cards = window.checkoutConfig.customerData.custom_attributes.everypay_vault.value;
                     var jsonCards = JSON.parse(cards);
+
+                    if (!window.checkoutConfig.payment.everypay.customerCards)
+                        window.checkoutConfig.payment.everypay.customerCards = jsonCards.cards;
+
                     savedCards(jsonCards.cards);
                     window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                     return savedCards;
@@ -281,7 +294,7 @@ define(
             clickEverypayButton: function(){
 
                 if ($("input[name='card']:checked").val()){
-                    $('#epPlaceOrder').click();
+                    this.payWithSavedCard();
                 }else{
                     this.EverypayModal.open();
                 }
