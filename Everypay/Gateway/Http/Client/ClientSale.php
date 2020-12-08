@@ -222,11 +222,15 @@ class ClientSale implements ClientInterface
                 $cardToken = $pmt->card->token;
                 $name = $pmt->card->friendly_name;
                 $vault = $requestData['everypay_vault'];
-
+                
                 $new_card = [
                     'custToken' => $customerToken,
                     'crdToken' => $cardToken,
-                    'name' => $name
+                    'name' => $name,
+                    'cardExpirationMonth' => $pmt->card->expiration_month,
+                    'cardExpirationYear' => $pmt->card->expiration_year,
+                    'cardType' => $pmt->card->type,
+                    'cardLastFourDigits' => $pmt->card->last_four
                 ];
 
                 $this->updateCustomer($requestData['customer_id'], $new_card, $vault);
