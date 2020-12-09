@@ -1,6 +1,11 @@
+let everypayUrl = 'https://js.everypay.gr/v3';
+
+if (window.checkoutConfig.payment.everypay.sandboxMode)
+    everypayUrl = 'https://sandbox-js.everypay.gr/v3';
+
 define([
     'EverypayHelpers',
-    'https://sandbox-js.everypay.gr/v3'
+     everypayUrl
 ], function(Helpers){
 
     return {
