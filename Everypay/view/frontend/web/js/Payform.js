@@ -13,9 +13,12 @@ define([
 
     return {
 
-        preload: (payload, modal) => {
+        load: (payload, modal, onLoadCallback) => {
             everypay.payform(payload, (response) => {
                 let everypayModal = modal;
+
+                if (onLoadCallback && response.onLoad)
+                    onLoadCallback(modal);
 
                 if (response.response == 'success') {
                     everypayModal.destroy();

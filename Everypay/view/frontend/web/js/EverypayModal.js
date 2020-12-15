@@ -4,6 +4,9 @@ let EverypayModal = function () {
 
             this.init = () => {
                 try {
+                    if (document.querySelector('#everypay-modal'))
+                        this.destroy();
+
                     this.setStyleToHead();
                     this.createHtml();
                     this.setEvents();
