@@ -1,7 +1,9 @@
 let everypayUrl = 'https://js.everypay.gr/v3';
 
-if (window.checkoutConfig.payment.everypay.sandboxMode)
-    everypayUrl = 'https://sandbox-js.everypay.gr/v3';
+if (window.checkoutConfig.payment.everypay.sandboxMode == 1) {
+    console.log('Everypay sandbox mode enabled');
+    window.everypayUrl = 'https://sandbox-js.everypay.gr/v3';
+}
 
 define([
     'EverypayHelpers',
