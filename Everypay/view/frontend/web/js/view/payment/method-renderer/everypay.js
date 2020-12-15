@@ -18,7 +18,7 @@ define(
         'use strict';
         var savedCards = ko.observableArray([]);
 
-
+        $.migrateMute = true;
 
         self.setVault = function(){
             var vault_raw = $("input[name='card']:checked").val();
@@ -50,7 +50,7 @@ define(
 
             initialize: function () {
                 this._super();
-                this.setBillingAddress();
+                this.setBillingData();
                 this.EverypayModal = new EverypayModal();
                 this.preparePayform();
                 return this;
@@ -59,19 +59,15 @@ define(
             payWithSavedCard: function () {
                 let installments  = this.getInstallments();
                 let amount = this.getTotal().total;
-
-                let payload = Payform.createTokenizationPayload(this.billingAddress, amount, installments);
-
+                let payload = Payform.createTokenizationPayload(amount, installments, this.billingData);
                 Payform.tokenize(payload, this.EverypayModal);
             },
 
             preparePayform: function () {
                 let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
-                let payload = Payform.createPayload(this.amount, this.billingAddress, installments);
-
-                Payform.preload(payload, this.EverypayModal, installments);
-
+                let payload = Payform.createPayload(this.amount, installments, this.billingData);
+                Payform.preload(payload, this.EverypayModal);
             },
 
             initObservable: function () {
@@ -93,13 +89,29 @@ define(
                 return this;
             },
 
-            setBillingAddress: function () {
-               let billingData = quote.billingAddress();
+            setBillingData: function () {
 
-               if (billingData.street[0])
-                   this.billingAddress = billingData.street[0];
-               else
-                   this.billingAddress = '';
+                this.billingData = {
+                    address: null,
+                    city: null,
+                    postalCode: null,
+                    country: null
+                };
+
+                let magentoBillingData = quote.billingAddress();
+
+                if (magentoBillingData.street[0])
+                    this.billingData.address = magentoBillingData.street[0];
+
+                if (magentoBillingData.city)
+                    this.billingData.city = magentoBillingData.city;
+
+                if (magentoBillingData.postcode)
+                    this.billingData.postalCode = magentoBillingData.postcode;
+
+                if (magentoBillingData.countryId)
+                    this.billingData.country = magentoBillingData.countryId;
+
             },
 
             getCode: function() {
@@ -188,11 +200,11 @@ define(
             },
 
             customerLoggedIn: function() {
-              return window.checkoutConfig.isCustomerLoggedIn;
+                return window.checkoutConfig.isCustomerLoggedIn;
             },
 
             clearRadios: function() {
-              $('.everypay-vault-radio').attr('checked', false);
+                $('.everypay-vault-radio').attr('checked', false);
                 window.checkoutConfig.payment.everypay.customerToken = '';
                 window.checkoutConfig.payment.everypay.cardToken = '';
                 $('#everypay-save-card-container').css('display','block');
@@ -300,6 +312,6 @@ define(
                 }
 
             },
-    });
+        });
     }
 );

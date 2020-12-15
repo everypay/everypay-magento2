@@ -1,13 +1,14 @@
+let isSandboxMode = window.checkoutConfig.payment.everypay.sandboxMode;
 let everypayUrl = 'https://js.everypay.gr/v3';
 
-if (window.checkoutConfig.payment.everypay.sandboxMode == 1) {
+if (isSandboxMode && isSandboxMode == 1) {
     console.log('Everypay sandbox mode enabled');
-    window.everypayUrl = 'https://sandbox-js.everypay.gr/v3';
+    everypayUrl = 'https://sandbox-js.everypay.gr/v3';
 }
 
 define([
     'EverypayHelpers',
-     everypayUrl
+    everypayUrl
 ], function(Helpers){
 
     return {
@@ -25,22 +26,25 @@ define([
             });
         },
 
-        createPayload: (amount, billingAddress, installments) => {
-           let payload = {
+        createPayload: (amount, installments, billingData) => {
+            let payload = {
                 amount: amount,
                 pk:  window.checkoutConfig.payment.everypay.publicKey,
                 locale: window.checkoutConfig.payment.everypay.locale,
                 data: {
                     billing: {
-                        addressLine1: billingAddress,
+                        addressLine1: billingData.address,
+                        postalCode: billingData.postalCode,
+                        country: billingData.country,
+                        city: billingData.city
                     },
                 }
             };
 
-           if (installments.payform)
-            payload.installments = installments.payform;
+            if (installments.payform)
+                payload.installments = installments.payform;
 
-           return payload;
+            return payload;
         },
 
 
@@ -61,7 +65,7 @@ define([
 
         },
 
-        createTokenizationPayload: function (billingAddress, amount, installments) {
+        createTokenizationPayload: function (amount, installments, billingData) {
 
             let cardDetails = Helpers.extractCardDetailsFromWindow();
 
@@ -78,7 +82,12 @@ define([
                     cardExpYear: cardDetails.cardExpYear,
                     cardLastFour: cardDetails.cardLastFour,
                     cardHolderName: '',
-                    billing: { addressLine1: billingAddress }
+                    billing: {
+                        addressLine1: billingData.address,
+                        postalCode: billingData.postalCode,
+                        country: billingData.country,
+                        city: billingData.city
+                    },
                 }
             };
 
@@ -90,5 +99,5 @@ define([
 
 
 
-}
+    }
 });
