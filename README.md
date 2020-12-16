@@ -3,11 +3,13 @@
 
 ## Installation Instructions
 
-1. Extract zip file to app/code folder (create it if it does not exist)
+1. Download zip, extract it and rename the extracted folder to Everypay. 
 
-2. from magento root run : bin/magento setup:upgrade
+2. Move folder to app/code folder (create it if it does not exist)
 
-3. from magento root run : composer require "everypay/everypay-php":"@stable"
+3. From magento document root run : bin/magento setup:upgrade
+
+4. From magento document root run : composer require "everypay/everypay-php":"@stable"
 
 
 
