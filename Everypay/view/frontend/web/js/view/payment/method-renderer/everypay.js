@@ -64,11 +64,11 @@ define(
             },
 
             payWithSavedCard: function () {
-                this.EverypayModal = new EverypayModal();
+                this.EverypayTokenizationModal = new EverypayModal();
                 let installments  = this.getInstallments();
                 let amount = this.getTotal().total;
                 let payload = Payform.createTokenizationPayload(amount, installments, this.billingData);
-                Payform.tokenize(payload, this.EverypayModal);
+                Payform.tokenize(payload, this.EverypayTokenizationModal);
             },
 
             enableLoadingScreen: function () {
@@ -328,13 +328,15 @@ define(
 
             clickEverypayButton: function(){
 
-                if ($("input[name='card']:checked").val()){
+                if (typeof $("input[name='card']:checked").val() != 'undefined'){
                     this.payWithSavedCard();
                 }else{
-                    if (!document.querySelector('#pay-form'))
+                    if (!document.querySelector('#pay-form') || this.EverypayTokenizationModal)
                         this.loadPayform();
                     else
                         this.EverypayModal.open();
+
+
                 }
 
             },
