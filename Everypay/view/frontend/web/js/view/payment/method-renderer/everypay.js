@@ -53,7 +53,6 @@ define(
                 this.setBillingData();
                 this.setPayload();
                 this.EverypayModal = new EverypayModal();
-                this.preparePayform();
                 return this;
             },
 
@@ -146,9 +145,10 @@ define(
 
             getTotal: function() {
                 var data = {
-                    'total' : this.getTotals().base_grand_total*100
+                    'total' : parseInt((this.getTotals().base_grand_total * 100).toFixed(0))
                 }
                 return data;
+
             },
 
 
@@ -329,13 +329,8 @@ define(
 
                 if (typeof $("input[name='card']:checked").val() != 'undefined'){
                     this.payWithSavedCard();
-                }else{
-                    if (!document.querySelector('#pay-form') || this.EverypayTokenizationModal)
-                        this.loadPayform();
-                    else
-                        this.EverypayModal.open();
-
-
+                } else{
+                     this.loadPayform();
                 }
 
             },
