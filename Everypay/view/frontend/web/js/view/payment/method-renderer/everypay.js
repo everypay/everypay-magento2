@@ -51,7 +51,6 @@ define(
             initialize: function () {
                 this._super();
                 this.setBillingData();
-                this.setPayload();
                 this.EverypayModal = new EverypayModal();
                 return this;
             },
@@ -76,11 +75,8 @@ define(
                  Επεξεργασία παραγγελίας. Παρακαλώ περιμένετε..</center></div>`);
             },
 
-            preparePayform: function () {
-                Payform.load(this.payload, this.EverypayModal);
-            },
-
             loadPayform: function () {
+                this.setPayload();
                 this.EverypayModal = new EverypayModal();
                 this.enableLoadingScreen();
                 Payform.load(this.payload, this.EverypayModal, function (modal) {
