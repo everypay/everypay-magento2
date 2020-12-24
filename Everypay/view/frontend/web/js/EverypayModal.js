@@ -116,8 +116,7 @@ let EverypayModal = function () {
             border: 1px solid #888;
             min-width: 35vw;
             max-width: 35vw;
-            min-height: 35vh;
-            max-height: 35vh;
+            min-height: 370px !important;
             box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
             -webkit-animation-name: everypayModalAnimation;
             -webkit-animation-duration: 0.4s;
@@ -237,8 +236,6 @@ let EverypayModal = function () {
             #everypay-modal-content {
                 min-width: 20vw;
                 max-width: 20vw;
-                min-height: 28vh;
-                max-height: 28vh;
             }
             #everypay-logo {
                 height: 5vh;
@@ -273,8 +270,6 @@ let EverypayModal = function () {
             #everypay-modal-content {
                 min-width: 60vw;
                 max-width: 60vw;
-                min-height: 40vh;
-                height: 40vh;
             }
 
             #everypay-modal-header span {
@@ -314,8 +309,6 @@ let EverypayModal = function () {
             #everypay-modal-content {
                 min-width: 40vw;
                 max-width: 40vw;
-                min-height: 25vh;
-                height: 25vh;
                 margin-bottom: 5vw;
             }
             #everypay-logo {
@@ -331,8 +324,6 @@ let EverypayModal = function () {
             #everypay-modal-content {
                 min-width: 30vw;
                 max-width: 30vw;
-                min-height: 50vh;
-                height: 50vh;
                 margin-bottom: 1vw;
             }
             #everypay-logo {
