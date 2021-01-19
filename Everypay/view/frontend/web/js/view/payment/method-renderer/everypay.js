@@ -115,19 +115,31 @@ define(
                     country: null
                 };
 
-                let magentoBillingData = quote.billingAddress();
+                try {
+                    let magentoBillingData = quote.billingAddress();
 
-                if (magentoBillingData.street[0])
-                    this.billingData.address = magentoBillingData.street[0];
+                    if (!magentoBillingData) {
+                        return;
+                    }
 
-                if (magentoBillingData.city)
-                    this.billingData.city = magentoBillingData.city;
+                    if (magentoBillingData.street && magentoBillingData.street[0]) {
+                        this.billingData.address = magentoBillingData.street[0];
+                    }
 
-                if (magentoBillingData.postcode)
-                    this.billingData.postalCode = magentoBillingData.postcode;
+                    if (magentoBillingData.city) {
+                        this.billingData.city = magentoBillingData.city;
+                    }
 
-                if (magentoBillingData.countryId)
-                    this.billingData.country = magentoBillingData.countryId;
+                    if (magentoBillingData.postcode) {
+                        this.billingData.postalCode = magentoBillingData.postcode;
+                    }
+
+                    if (magentoBillingData.countryId) {
+                        this.billingData.country = magentoBillingData.countryId;
+                    }
+                } catch (e) {
+                    console.log(e)
+                }
 
             },
 
