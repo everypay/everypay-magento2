@@ -177,12 +177,12 @@ define(
                 let payform_installments = [];
 
                 if ( max_installments > 0){
-
                     window.checkoutConfig.payment.everypay.maxInstallments = max_installments;
-                    let y = 2;
+                    let y = 1;
                     for (let i = 2; i <= max_installments; i += y) {
-                        if (i >= 12)
-                            y = 12;
+                        if (i >= 36) {
+                            y = 36;
+                        }
 
                         payform_installments.push(i);
                     }
