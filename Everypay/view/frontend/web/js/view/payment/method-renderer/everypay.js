@@ -70,9 +70,14 @@ define(
             },
 
             enableLoadingScreen: function () {
+                let loadingText = 'Επεξεργασία παραγγελίας. Παρακαλώ περιμένετε...';
+                let locale = window.checkoutConfig.payment.everypay.locale;
+                if (typeof locale != 'undefined' && locale != 'el') {
+                    loadingText = 'Please wait...';
+                }
                 $('body').prepend(`<div class="loader-everypay" style="position: fixed;height: 100%;width: 100%;background: #f2f2f2;z-index: 100000;top: 0;left: 0;opacity: 0.93;">\n\
                 <center style="width: 100%;position: fixed;clear: both;font-size: 1.3em;top: 40%;margin: 0 auto;"><svg style="max-width: 64px; min-width: 64px; max-height: 64px; min-height: 64px;" id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 94.1 94.1"><defs><style>.cls-1{fill:url(#linear-gradient);}.cls-2{fill:#21409a;}.cls-3{fill:#39b54a;}</style><linearGradient id="linear-gradient" x1="47.05" y1="-260.26" x2="47.05" y2="-166.16" gradientTransform="matrix(1, 0, 0, -1, 0, -166.16)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#39b54a"/><stop offset="1" stop-color="#21409a"/></linearGradient></defs><path class="cls-1" d="M94.1,47.05a47.05,47.05,0,1,1-47-47A47,47,0,0,1,94.1,47.05ZM47,8.45A38.69,38.69,0,1,0,85.73,47.14,38.69,38.69,0,0,0,47,8.45Z"><animateTransform attributeType="xml" attributeName="transform" type="rotate" from="0 47.05 47.10" to="360 47.05 47.10" dur="1s" additive="sum" repeatCount="indefinite" /></path><path class="cls-2" d="M66.62,24.83c7.73.84,6.38,8.53,6.38,8.53L66.14,51.3H30l-3.43,9.25C19,59.59,21,52.38,21,52.38L31.38,24.67ZM36.71,33.5l-3.57,9.29H60.65l2.51-6.45a2.52,2.52,0,0,0-1.93-2.84Z"/><path class="cls-3" d="M26.8,61S24.74,68,32.05,69.6H60.68s2.06-7.13-5.25-8.52Z"/></svg><br /><br />\n\
-                 Επεξεργασία παραγγελίας. Παρακαλώ περιμένετε..</center></div>`);
+                 ${loadingText}</center></div>`);
             },
 
             loadPayform: function () {
@@ -161,29 +166,25 @@ define(
 
 
             getInstallments: function(){
+
                 let max_installments = 0;
                 let total = this.getTotals().grand_total;
                 let plan = window.checkoutConfig.payment.everypay.installments;
-
                 if (plan.length>0){
                     $.each(plan, function(i,v){
-                        if (parseFloat(v[1])>=total){
+                        if (total >= parseFloat(v[1])){
                             max_installments = parseInt(v[0]);
-                            return false;
                         }
                     })
                 }
-
                 let payform_installments = [];
 
                 if ( max_installments > 0){
                     window.checkoutConfig.payment.everypay.maxInstallments = max_installments;
-                    let y = 1;
-                    for (let i = 2; i <= max_installments; i += y) {
+                    for (let i = 2; i <= max_installments; i++) {
                         if (i >= 36) {
-                            y = 36;
+                            continue;
                         }
-
                         payform_installments.push(i);
                     }
 
