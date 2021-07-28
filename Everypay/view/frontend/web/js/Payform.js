@@ -91,6 +91,9 @@ define([
                         country: billingData.country,
                         city: billingData.city
                     },
+                    display: {
+                        cvvInput: false
+                    }
                 }
             };
 
