@@ -66,8 +66,8 @@ class ClientSale implements ClientInterface
     public function placeRequest(TransferInterface $transferObject)
     {
         $this->logger->debug([
-            'initRequest' => $transferObject->getBody()
-        ]);
+             'initRequest' => $transferObject->getBody()
+         ]);
 
         Everypay::$isTest = $this->_sandboxMode;
         $requestData = $transferObject->getBody();
@@ -79,7 +79,7 @@ class ClientSale implements ClientInterface
         $this->proccessRemovedCards($removed_cards, $empty_vault, $requestData);
 
         $existing_customer = '';
-        $maxInstallments = intval($requestData['max_installments']);
+        $installments = intval($requestData['max_installments']);
         $token = $requestData['token'];
         $customerEmail = $requestData['EMAIL'];
         $orderNumber = $requestData['INVOICE'];
@@ -113,8 +113,8 @@ class ClientSale implements ClientInterface
             $params['card'] = $cardToken;
         }
 
-        if ($maxInstallments > 0) {
-            $params['max_installments'] = $maxInstallments;
+        if ($installments > 0) {
+            $params['installments'] = $installments;
         }
 
         Everypay::setApiKey($this->_secretKey);
@@ -152,8 +152,8 @@ class ClientSale implements ClientInterface
         $response = $this->generateResponseForCode($rcode, $pmt);
 
         $this->logger->debug([
-            'request' => $transferObject->getBody(),
-            'response' => $response
+             'request' => $transferObject->getBody(),
+             'response' => $response
         ]);
 
         return $response;
