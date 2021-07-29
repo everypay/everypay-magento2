@@ -65,9 +65,7 @@ class ClientSale implements ClientInterface
      */
     public function placeRequest(TransferInterface $transferObject)
     {
-        $this->logger->debug([
-             'initRequest' => $transferObject->getBody()
-         ]);
+        $this->logger->debug(['initRequest' => $transferObject->getBody()]);
 
         Everypay::$isTest = $this->_sandboxMode;
         $requestData = $transferObject->getBody();
@@ -79,11 +77,14 @@ class ClientSale implements ClientInterface
         $this->proccessRemovedCards($removed_cards, $empty_vault, $requestData);
 
         $existing_customer = '';
-        $installments = intval($requestData['max_installments']);
         $token = $requestData['token'];
         $customerEmail = $requestData['EMAIL'];
         $orderNumber = $requestData['INVOICE'];
         $amount = floatval($requestData['AMOUNT'])*100;
+
+        if (!$token || !$amount) {
+            throw new \Exception('Token or amount error.');
+        }
 
         $params = array(
             'token'         => $token,
@@ -113,10 +114,6 @@ class ClientSale implements ClientInterface
             $params['card'] = $cardToken;
         }
 
-        if ($installments > 0) {
-            $params['installments'] = $installments;
-        }
-
         Everypay::setApiKey($this->_secretKey);
         $response = Payment::create($params);
 
@@ -124,11 +121,11 @@ class ClientSale implements ClientInterface
         {
             $rcode = 0;
             $pmt = 'error';
-        }else{
+        }else {
             $rcode = 1;
             $pmt = $response;
 
-            if(isset($pmt->customer) && $trxType === 'paySave'){
+            if (isset($pmt->customer) && $trxType === 'paySave') {
                 $customerToken = $pmt->customer->token;
                 $cardToken = $pmt->card->token;
                 $name = $pmt->card->friendly_name;
@@ -154,7 +151,7 @@ class ClientSale implements ClientInterface
         $this->logger->debug([
              'request' => $transferObject->getBody(),
              'response' => $response
-        ]);
+         ]);
 
         return $response;
     }

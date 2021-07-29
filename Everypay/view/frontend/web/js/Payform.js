@@ -17,8 +17,9 @@ define([
             everypay.payform(payload, (response) => {
                 let everypayModal = modal;
 
-                if (onLoadCallback && response.onLoad)
+                if (onLoadCallback && response.onLoad) {
                     onLoadCallback(modal);
+                }
 
                 if (response.response == 'success') {
                     everypayModal.destroy();
@@ -49,7 +50,6 @@ define([
 
             return payload;
         },
-
 
         tokenize: (payload, modal) => {
 
@@ -91,9 +91,9 @@ define([
                         country: billingData.country,
                         city: billingData.city
                     },
-                    display: {
-                        cvvInput: false
-                    }
+                },
+                display: {
+                    cvvInput: false
                 }
             };
 
@@ -102,8 +102,6 @@ define([
 
             return payload;
         }
-
-
 
     }
 });
