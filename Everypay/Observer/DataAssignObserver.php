@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2021 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 namespace Everypay\Everypay\Observer;
@@ -22,6 +22,7 @@ class DataAssignObserver extends AbstractDataAssignObserver
     const REMOVED_CARDS = 'removed_cards';
     const EMPTY_VAULT = 'empty_vault';
     const MAX_INSTALLMENTS = 'max_installments';
+
     /**
      * @var array
      */
@@ -52,12 +53,14 @@ class DataAssignObserver extends AbstractDataAssignObserver
         $paymentInfo = $this->readPaymentModelArgument($observer);
 
         foreach ($this->additionalInformationList as $additionalInformationKey) {
-            if (isset($additionalData[$additionalInformationKey])) {
-                $paymentInfo->setAdditionalInformation(
-                    $additionalInformationKey,
-                    $additionalData[$additionalInformationKey]
-                );
+            if (!isset($additionalData[$additionalInformationKey])) {
+                continue;
             }
+            $paymentInfo->setAdditionalInformation(
+                $additionalInformationKey,
+                $additionalData[$additionalInformationKey]
+            );
+
         }
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2021 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 /*browser:true*/
@@ -106,7 +106,6 @@ define(
                         'removedCards',
                         'emptyVault',
                         'maxInstallments'
-
                     ]);
                 return this;
             },
@@ -207,27 +206,22 @@ define(
             },
 
             everypayVaultExists: function() {
-                if (window.checkoutConfig.isCustomerLoggedIn){
 
-                    var vault_exists = false;
-                    if (typeof(window.checkoutConfig.customerData.custom_attributes) !== 'undefined'){
-                        vault_exists = true;
-                    }
-
-                    if (vault_exists) {
-                        var cards = window.checkoutConfig.customerData.custom_attributes.everypay_vault.value;
-                        if (cards.length > 0) {
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
-
-                }else{
-
+                if (!window.checkoutConfig.isCustomerLoggedIn) {
                     return false;
-
                 }
+
+                if (typeof(window.checkoutConfig.customerData.custom_attributes) == 'undefined'){
+                    return false;
+                }
+
+                var cards = window.checkoutConfig.customerData.custom_attributes.everypay_vault.value;
+                if (cards.length > 0) {
+                    return true;
+                } else {
+                    return false;
+                }
+
             },
 
             customerLoggedIn: function() {
@@ -239,6 +233,7 @@ define(
                 window.checkoutConfig.payment.everypay.customerToken = '';
                 window.checkoutConfig.payment.everypay.cardToken = '';
                 $('#everypay-save-card-container').css('display','block');
+
                 return true;
             },
 
@@ -265,7 +260,7 @@ define(
             },
 
             removeCard: function() {
-                if(confirm("Are you sure you want to remove this stored card?")){
+                if (confirm("Are you sure you want to remove this stored card?")){
 
                     $('.everypay-vault-radio').attr('checked', false);
                     window.checkoutConfig.payment.everypay.customerToken = '';
@@ -334,14 +329,14 @@ define(
                 return window.checkoutConfig.payment.everypay.fixedamount;
             },
 
-            clickEverypayButton: function(){
+            clickEverypayButton: function() {
 
                 if (typeof $("input[name='card']:checked").val() != 'undefined'){
                     this.payWithSavedCard();
-                } else{
-                     this.loadPayform();
+                    return;
                 }
 
+                this.loadPayform();
             },
         });
     }

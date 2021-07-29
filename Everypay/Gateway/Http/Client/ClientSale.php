@@ -1,17 +1,19 @@
 <?php
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2021 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 namespace Everypay\Everypay\Gateway\Http\Client;
 
+use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\View\Result\PageFactory;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
 use Everypay\Everypay\Model\Ui\EverypayConfig;
 use Everypay\Everypay;
 use Everypay\Payment;
-use Everypay\Token;
 use Everypay\Customer;
 
 
@@ -19,14 +21,6 @@ class ClientSale implements ClientInterface
 {
     const SUCCESS = 1;
     const FAILURE = 0;
-
-    /**
-     * @var array
-     */
-    private $results = [
-        self::SUCCESS,
-        self::FAILURE
-    ];
 
     /**
      * @var Logger
@@ -37,13 +31,16 @@ class ClientSale implements ClientInterface
     /**
      * @param Logger $logger
      * @param EverypayConfig $epConfig
+     * @param Context $context
+     * @param PageFactory $resultPageFactory
+     * @param CustomerRepositoryInterface $customerRepositoryInterface
      */
     public function __construct(
         Logger $logger,
         EverypayConfig $epConfig,
-        \Magento\Framework\App\Action\Context $context,
-        \Magento\Framework\View\Result\PageFactory $resultPageFactory,
-        \Magento\Customer\Api\CustomerRepositoryInterface $customerRepositoryInterface
+        Context $context,
+        PageFactory $resultPageFactory,
+        CustomerRepositoryInterface $customerRepositoryInterface
     ) {
         $this->logger = $logger;
         $this->epConfig = $epConfig;
@@ -68,20 +65,10 @@ class ClientSale implements ClientInterface
      */
     public function placeRequest(TransferInterface $transferObject)
     {
-
-        $this->logger->debug(
-            [
-                'initRequest' => $transferObject->getBody()
-            ]
-        );
-
+        $this->logger->debug(['initRequest' => $transferObject->getBody()]);
 
         Everypay::$isTest = $this->_sandboxMode;
-
-
         $requestData = $transferObject->getBody();
-
-
         $trxType = $this->checkTrxType($requestData);
 
         $removed_cards = $requestData['removed_cards'];
@@ -89,140 +76,61 @@ class ClientSale implements ClientInterface
 
         $this->proccessRemovedCards($removed_cards, $empty_vault, $requestData);
 
-        $params = null;
+        $existing_customer = '';
+        $token = $requestData['token'];
+        $customerEmail = $requestData['EMAIL'];
+        $orderNumber = $requestData['INVOICE'];
+        $amount = floatval($requestData['AMOUNT'])*100;
 
-
-        if ($trxType === 'pay'){
-
-            $token = $requestData['token'];
-            $customerEmail = $requestData['EMAIL'];
-            $orderNumber = $requestData['INVOICE'];
-            $amount = floatval($requestData['AMOUNT'])*100;
-            $maxInstallments = intval($requestData['max_installments']);
-
-            Everypay::setApiKey($this->_publicKey);
-
-            $token = Token::retrieve($token);
-
-
-            if($token->is_used || $token->has_expired)
-            {
-                throw new \InvalidArgumentException('Card token has expired or been used already !!!');
-            }
-
-            $params = array(
-                'token'         => $token->token,
-                'amount'        => $amount,
-                'payee_email'   => $customerEmail,
-                'description'   => 'Order: ' . $orderNumber,
-            );
-            if($maxInstallments > 0){
-                $params['max_installments'] = $maxInstallments;
-            }
+        if (!$token || !$amount) {
+            throw new \Exception('Token or amount error.');
         }
 
+        $params = array(
+            'token'         => $token,
+            'amount'        => $amount,
+            'payee_email'   => $customerEmail,
+            'description'   => 'Order: ' . $orderNumber,
+        );
 
-        if ($trxType === 'paySave'){
-
-            $token = $requestData['token'];
-            $customerEmail = $requestData['EMAIL'];
-            $orderNumber = $requestData['INVOICE'];
-            $amount = floatval($requestData['AMOUNT'])*100;
-            $maxInstallments = intval($requestData['max_installments']);
-
-
-            Everypay::setApiKey($this->_publicKey);
-
-            $token = Token::retrieve($token);
-
-            if($token->is_used || $token->has_expired)
-            {
-                throw new \InvalidArgumentException('Card token has expired or been used already !!!');
-            }
-
+        if ($trxType === 'paySave') {
             $vault = $requestData['everypay_vault'];
-            if ($vault == '[]' || $vault == '{}'){
-                $existing_customer = '';
-            }else {
+
+            if (!in_array($vault, ['[]', '{}'])) {
                 $existing_customer = $this->getEverypayCustomer($requestData['customer_id']);
             }
-            if($existing_customer !== '' ){
-                $card_token = $token->token;
-                $params = array(
-                    'token' => $card_token
-                );
-                Everypay::setApiKey($this->_secretKey);
-                $response = Customer::update($existing_customer,$params);
-                if(isset($response->error)) {
-                    throw new \InvalidArgumentException('Error updating customer with new card !!! >> '.$existing_customer. " >>> ". $response->error->message);
-                }else{
-                    $card_token = $response->cards->data[0]->token;
-                    $params = array(
-                        'token'         => $existing_customer,
-                        'amount'        => $amount,
-                        'payee_email'   => $customerEmail,
-                        'description'   => 'Order: ' . $orderNumber,
-                        'card'          => $card_token
-                    );
-                    if($maxInstallments > 0){
-                        $params['max_installments'] = $maxInstallments;
-                    }
-                }
-            }else{
-                $params = array(
-                    'token'         => $token->token,
-                    'amount'        => $amount,
-                    'payee_email'   => $customerEmail,
-                    'description'   => 'Order: ' . $orderNumber,
-                    'create_customer' => 1
-                );
+
+            if ($existing_customer !== ''){
+                $params['customer'] = $existing_customer;
+            } else {
+                $params['create_customer'] = 1;
             }
         }
 
         if ($trxType === 'payCustomer'){
             $customerToken = $requestData['customer_token'];
             $cardToken = $requestData['card_token'];
-            $customerEmail = $requestData['EMAIL'];
-            $orderNumber = $requestData['INVOICE'];
-            $amount = floatval($requestData['AMOUNT'])*100;
-
-
-
-            $params = array(
-                'token'         => $customerToken,
-                'card'          => $cardToken,
-                'amount'        => $amount,
-                'payee_email'   => $customerEmail,
-                'description'   => 'Order: ' . $orderNumber,
-            );
-        }
-
-
-
-        if($params === null)
-        {
-            throw new \InvalidArgumentException('No parameters found for payment call setup');
+            $params['customer'] = $customerToken;
+            $params['card'] = $cardToken;
         }
 
         Everypay::setApiKey($this->_secretKey);
+        $response = Payment::create($params);
 
-
-        $response=Payment::create($params);
-
-        if(isset($response->error))
+        if (isset($response->error))
         {
             $rcode = 0;
             $pmt = 'error';
-        }else{
+        }else {
             $rcode = 1;
             $pmt = $response;
 
-            if(isset($pmt->customer) && $trxType === 'paySave'){
+            if (isset($pmt->customer) && $trxType === 'paySave') {
                 $customerToken = $pmt->customer->token;
                 $cardToken = $pmt->card->token;
                 $name = $pmt->card->friendly_name;
                 $vault = $requestData['everypay_vault'];
-                
+
                 $new_card = [
                     'custToken' => $customerToken,
                     'crdToken' => $cardToken,
@@ -238,15 +146,12 @@ class ClientSale implements ClientInterface
 
         }
 
-
         $response = $this->generateResponseForCode($rcode, $pmt);
 
-        $this->logger->debug(
-            [
-                'request' => $transferObject->getBody(),
-                'response' => $response
-            ]
-        );
+        $this->logger->debug([
+             'request' => $transferObject->getBody(),
+             'response' => $response
+         ]);
 
         return $response;
     }
@@ -425,12 +330,8 @@ class ClientSale implements ClientInterface
             throw new \InvalidArgumentException('UPDATE DEFAULT CARD TO CUSTOMER ERROR >>> URL: '.$url.  ' ERROR: '. $err .' DATA: '.$post_data);
         }
 
-
-
         $url = "https://".$server."/customers/".$cus_token."/card/".$crd_token;
-        //$username = $username.":";
         $action = 'DELETE';
-
 
         $curl = curl_init();
 
