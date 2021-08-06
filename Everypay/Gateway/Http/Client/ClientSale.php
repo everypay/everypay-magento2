@@ -6,7 +6,6 @@
 namespace Everypay\Everypay\Gateway\Http\Client;
 
 use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Framework\App\Action\Context;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
@@ -31,14 +30,12 @@ class ClientSale implements ClientInterface
     /**
      * @param Logger $logger
      * @param EverypayConfig $epConfig
-     * @param Context $context
      * @param PageFactory $resultPageFactory
      * @param CustomerRepositoryInterface $customerRepositoryInterface
      */
     public function __construct(
         Logger $logger,
         EverypayConfig $epConfig,
-        Context $context,
         PageFactory $resultPageFactory,
         CustomerRepositoryInterface $customerRepositoryInterface
     ) {
