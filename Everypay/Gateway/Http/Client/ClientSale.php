@@ -6,8 +6,6 @@
 namespace Everypay\Everypay\Gateway\Http\Client;
 
 use Exception;
-use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Framework\View\Result\PageFactory;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
@@ -27,33 +25,20 @@ class ClientSale implements ClientInterface
      * @var Logger
      */
     private $logger;
+
     private $epConfig;
 
     /**
      * @param LoggerInterface $logger
-     * @param EverypayConfig $epConfig
-     * @param PageFactory $resultPageFactory
-     * @param CustomerRepositoryInterface $customerRepositoryInterface
+     * @param EverypayConfig $gatewayConfig
      */
-    public function __construct(
-        LoggerInterface $logger,
-        EverypayConfig $epConfig,
-        PageFactory $resultPageFactory,
-        CustomerRepositoryInterface $customerRepositoryInterface
-    ) {
+    public function __construct(LoggerInterface $logger, EverypayConfig $gatewayConfig)
+    {
         $this->logger = $logger;
-        $this->epConfig = $epConfig;
-
-        $secretKey = $this->epConfig->getSecretKey();
-        $publicKey = $this->epConfig->getPublicKey();
-        $sandboxMode = $this->epConfig->isSandboxMode();
-
-        $this->_secretKey = $secretKey;
-        $this->_publicKey = $publicKey;
-        $this->_sandboxMode = $sandboxMode;
-
-        $this->_customerRepositoryInterface = $customerRepositoryInterface;
-        $this->_resultPageFactory = $resultPageFactory;
+        $this->epConfig = $gatewayConfig;
+        $this->_secretKey = $this->epConfig->getSecretKey();
+        $this->_publicKey = $this->epConfig->getPublicKey();
+        $this->_sandboxMode = $this->epConfig->isSandboxMode();
     }
 
     /**
