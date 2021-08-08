@@ -150,7 +150,7 @@ class ClientSale implements ClientInterface
 
         $response = $this->generateResponseForCode($rcode, $pmt);
 
-        $this->logger->debug([
+        $this->logger->debug('everypay_transaction', [
              'request' => $transferObject->getBody(),
              'response' => $response
          ]);
