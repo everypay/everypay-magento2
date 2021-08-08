@@ -6,6 +6,7 @@
 namespace Everypay\Everypay\Gateway\Http\Client;
 
 use Exception;
+use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
@@ -29,16 +30,37 @@ class ClientSale implements ClientInterface
     private $epConfig;
 
     /**
+     * @var string
+     */
+    private $secretKey;
+
+    /**
+     * @var bool|mixed
+     */
+    private $isSandboxMode;
+
+    /**
+     * @var CustomerRepositoryInterface
+     */
+    private $customerRepositoryInterface;
+
+    /**
      * @param LoggerInterface $logger
      * @param EverypayConfig $gatewayConfig
+     * @param CustomerRepositoryInterface $customerRepository
      */
-    public function __construct(LoggerInterface $logger, EverypayConfig $gatewayConfig)
+    public function __construct(
+        LoggerInterface $logger,
+        EverypayConfig $gatewayConfig,
+        CustomerRepositoryInterface $customerRepository
+    )
     {
         $this->logger = $logger;
         $this->epConfig = $gatewayConfig;
-        $this->_secretKey = $this->epConfig->getSecretKey();
-        $this->_publicKey = $this->epConfig->getPublicKey();
-        $this->_sandboxMode = $this->epConfig->isSandboxMode();
+        $this->customerRepositoryInterface = $customerRepository;
+
+        $this->secretKey = $this->epConfig->getSecretKey();
+        $this->isSandboxMode = $this->epConfig->isSandboxMode();
     }
 
     /**
@@ -54,7 +76,7 @@ class ClientSale implements ClientInterface
             'initRequest' => $transferObject->getBody()
         ]);
 
-        Everypay::$isTest = $this->_sandboxMode;
+        Everypay::$isTest = $this->isSandboxMode;
         $requestData = $transferObject->getBody();
         $trxType = $this->checkTrxType($requestData);
 
@@ -101,7 +123,7 @@ class ClientSale implements ClientInterface
             $params['card'] = $cardToken;
         }
 
-        Everypay::setApiKey($this->_secretKey);
+        Everypay::setApiKey($this->secretKey);
         $response = Payment::create($params);
 
         if (isset($response->error))
@@ -233,7 +255,7 @@ class ClientSale implements ClientInterface
     {
         $customerId = $customer_id;
         if ($customerId) {
-            $customer = $this->_customerRepositoryInterface->getById($customerId);
+            $customer = $this->customerRepositoryInterface->getById($customerId);
 
             $vault_data = json_decode($vault,true);
             $vault_data[] = $saved_card;
@@ -242,7 +264,7 @@ class ClientSale implements ClientInterface
             $vault_data = json_encode($everypay_vault);
 
             $customer->setCustomAttribute('everypay_vault', $vault_data);
-            $this->_customerRepositoryInterface->save($customer);
+            $this->customerRepositoryInterface->save($customer);
 
         }
     }
@@ -251,7 +273,7 @@ class ClientSale implements ClientInterface
     {
         $customerId = $customer_id;
         if ($customerId) {
-            $customer = $this->_customerRepositoryInterface->getById($customerId);
+            $customer = $this->customerRepositoryInterface->getById($customerId);
             $vault = $customer->getCustomAttribute('everypay_vault')->getValue();
 
             if($vault === null){
@@ -269,7 +291,7 @@ class ClientSale implements ClientInterface
 
     private function deleteEverypayCustomerCard($username, $cus_token, $crd_token, $vault)
     {
-        if($this->_sandboxMode){
+        if ($this->isSandboxMode){
             $server = 'sandbox-api.everypay.gr';
         }else{
             $server = 'api.everypay.gr';
@@ -357,7 +379,7 @@ class ClientSale implements ClientInterface
 
             if(sizeof($rcards) > 0){
                 if($empty_vault == true){
-                    Everypay::setApiKey($this->_secretKey);
+                    Everypay::setApiKey($this->secretKey);
                     $removed_cards = explode(";", $rcards[1]);
                     $xtoken = $removed_cards[0];
                     $response = Customer::delete($xtoken);
@@ -368,7 +390,7 @@ class ClientSale implements ClientInterface
 
                             $custToken = $xcard[0];
                             $cardToken = $xcard[1];
-                            $this->deleteEverypayCustomerCard($this->_secretKey, $custToken, $cardToken, $vault);
+                            $this->deleteEverypayCustomerCard($this->secretKey, $custToken, $cardToken, $vault);
                         }
                     }
                 }
@@ -400,10 +422,10 @@ class ClientSale implements ClientInterface
             return;
         }
 
-        $customer = $this->_customerRepositoryInterface->getById($customerId);
+        $customer = $this->customerRepositoryInterface->getById($customerId);
 
         $customer->setCustomAttribute('everypay_vault', $vault_data);
-        $this->_customerRepositoryInterface->save($customer);
+        $this->customerRepositoryInterface->save($customer);
 
 
     }
