@@ -46,7 +46,7 @@ class ClientSale implements ClientInterface
 
         $secretKey = $this->epConfig->getSecretKey();
         $publicKey = $this->epConfig->getPublicKey();
-        $sandboxMode = $this->epConfig->getSandboxMode();
+        $sandboxMode = $this->epConfig->isSandboxMode();
 
         $this->_secretKey = $secretKey;
         $this->_publicKey = $publicKey;
