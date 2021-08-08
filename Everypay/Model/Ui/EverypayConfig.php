@@ -3,7 +3,6 @@
 namespace Everypay\Everypay\Model\Ui;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\Locale\Resolver;
 
 class EverypayConfig
 {
@@ -13,16 +12,9 @@ class EverypayConfig
     private $scopeConfig;
 
     /**
-     * @var Resolver
-     */
-    private $resolver;
-
-    /**
-     * @param Resolver $resolver
      * @param ScopeConfigInterface $scopeConfig
      */
-    public function __construct(Resolver $resolver, ScopeConfigInterface $scopeConfig){
-        $this->resolver = $resolver;
+    public function __construct(ScopeConfigInterface $scopeConfig){
         $this->scopeConfig = $scopeConfig;
     }
 
@@ -45,15 +37,6 @@ class EverypayConfig
         return $this->scopeConfig->getValue(
             'payment/everypay/sandbox'
         );
-    }
-
-    public function getLocale(): string
-    {
-        if ($this->resolver->getLocale() !== 'el_GR') {
-            return 'en';
-        }
-
-        return 'el';
     }
 
     public function getInstallmentsPlan()
