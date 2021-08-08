@@ -80,10 +80,11 @@ class ClientSale implements ClientInterface
         $requestData = $transferObject->getBody();
         $trxType = $this->checkTrxType($requestData);
 
-        $removed_cards = $requestData['removed_cards'];
-        $empty_vault = $requestData['empty_vault'];
-
-        $this->proccessRemovedCards($removed_cards, $empty_vault, $requestData);
+        $this->proccessRemovedCards(
+            $requestData['removed_cards'],
+            $requestData['empty_vault'],
+            $requestData
+        );
 
         $existing_customer = '';
         $token = $requestData['token'];
