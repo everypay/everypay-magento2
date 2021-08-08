@@ -35,12 +35,6 @@
         </arguments>
     </virtualType>
 
-    <type name="Everypay\Everypay\Gateway\Http\Client\ClientSale">
-        <arguments>
-            <argument name="logger" xsi:type="object">EverypayEverypayLogger</argument>
-        </arguments>
-    </type>
-
     <!-- Commands infrastructure -->
     <virtualType name="EverypayEverypayCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
         <arguments>
