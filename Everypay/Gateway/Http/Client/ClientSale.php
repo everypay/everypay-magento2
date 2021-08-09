@@ -7,7 +7,6 @@ namespace Everypay\Everypay\Gateway\Http\Client;
 
 use Exception;
 use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Framework\View\Result\PageFactory;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
@@ -32,13 +31,11 @@ class ClientSale implements ClientInterface
     /**
      * @param LoggerInterface $logger
      * @param EverypayConfig $epConfig
-     * @param PageFactory $resultPageFactory
      * @param CustomerRepositoryInterface $customerRepositoryInterface
      */
     public function __construct(
         LoggerInterface $logger,
         EverypayConfig $epConfig,
-        PageFactory $resultPageFactory,
         CustomerRepositoryInterface $customerRepositoryInterface
     ) {
         $this->logger = $logger;
@@ -53,7 +50,6 @@ class ClientSale implements ClientInterface
         $this->_sandboxMode = $sandboxMode;
 
         $this->_customerRepositoryInterface = $customerRepositoryInterface;
-        $this->_resultPageFactory = $resultPageFactory;
     }
 
     /**
