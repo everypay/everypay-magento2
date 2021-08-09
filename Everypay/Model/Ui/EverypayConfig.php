@@ -7,48 +7,68 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 class EverypayConfig
 {
     /**
-     * @var ScopeConfigInterface
+     * @var string
      */
-    private $scopeConfig;
+    private $publicKey;
+
+    /**
+     * @var string
+     */
+    private $secretKey;
+
+    /**
+     * @var bool
+     */
+    private $isSandboxMode;
+
+    /**
+     * @var mixed
+     */
+    private $installments;
 
     /**
      * @param ScopeConfigInterface $scopeConfig
      */
-    public function __construct(ScopeConfigInterface $scopeConfig){
-        $this->scopeConfig = $scopeConfig;
-    }
-
-    public function getPublicKey()
+    public function __construct(ScopeConfigInterface $scopeConfig)
     {
-        return $this->scopeConfig->getValue(
+        $this->publicKey = $scopeConfig->getValue(
             'payment/everypay/merchant_public_key'
         );
-    }
 
-    public function getSecretKey()
-    {
-        return $this->scopeConfig->getValue(
+        $this->secretKey = $scopeConfig->getValue(
             'payment/everypay/merchant_secret_key'
         );
-    }
 
-    public function getSandboxMode()
-    {
-        return $this->scopeConfig->getValue(
+        $this->isSandboxMode = $scopeConfig->getValue(
             'payment/everypay/sandbox'
         );
-    }
 
-    public function getInstallmentsPlan()
-    {
-        $_installments = $this->scopeConfig->getValue(
+        $this->installments = $scopeConfig->getValue(
             'payment/everypay/installments'
         );
+    }
 
-        $installmentsSecondLevel=array();
+    public function getPublicKey(): string
+    {
+        return $this->publicKey;
+    }
 
-        if($_installments != ''){
-            $installmentsFirstLevel = explode(',',$_installments);
+    public function getSecretKey(): string
+    {
+        return $this->secretKey;
+    }
+
+    public function isSandboxMode()
+    {
+        return $this->isSandboxMode;
+    }
+
+    public function getInstallmentsPlan(): array
+    {
+        $installmentsSecondLevel = [];
+
+        if ($this->installments != ''){
+            $installmentsFirstLevel = explode(',', $this->installments);
             foreach ($installmentsFirstLevel as $x){
                 $installmentsSecondLevel[] = explode(';',$x);
             }
