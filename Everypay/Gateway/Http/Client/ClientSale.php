@@ -69,10 +69,11 @@ class ClientSale implements ClientInterface
         $requestData = $transferObject->getBody();
         $trxType = $this->checkTrxType($requestData);
 
-        $removed_cards = $requestData['removed_cards'];
-        $empty_vault = $requestData['empty_vault'];
-
-        $this->proccessRemovedCards($removed_cards, $empty_vault, $requestData);
+        $this->proccessRemovedCards(
+            $requestData['removed_cards'] ?? '',
+            $requestData['empty_vault'] ?? '',
+            $requestData
+        );
 
         $existing_customer = '';
         $token = $requestData['token'];
@@ -159,28 +160,21 @@ class ClientSale implements ClientInterface
      * @param $data
      * @return string
      */
-    protected function checkTrxType($data)
+    protected function checkTrxType($data): string
     {
-        $trxType = null;
 
-        if($data['token'] !== ''){
-            if($data['save_card'] !== ''){
-                $trxType = 'paySave';
-            }else{
-                $trxType = 'pay';
+        if (!empty($data['customer_token']) && !empty($data['card_token'])) {
+            return 'payCustomer';
+        }
+
+        if (!empty($data['token'])){
+            if (!empty($data['save_card'])){
+               return 'paySave';
             }
+            return 'pay';
         }
 
-        if($data['customer_token'] !== '' && $data['card_token'] !== '' ){
-            $trxType = 'payCustomer';
-        }
-
-        if($trxType === null ){
-            throw new \InvalidArgumentException('No valid transaction type was found!!!');
-        }else{
-            return $trxType;
-        }
-
+        throw new \InvalidArgumentException('No valid transaction type was found!!!');
     }
 
     /**
@@ -361,37 +355,35 @@ class ClientSale implements ClientInterface
 
     private function proccessRemovedCards($removed_cards, $empty_vault, $request_data)
     {
-        if($removed_cards != ""){
-            $vault = $request_data['everypay_vault'];
-
-            $rcards = explode(",", $removed_cards);
-
-            if(sizeof($rcards) > 0){
-                if($empty_vault == true){
-                    Everypay::setApiKey($this->_secretKey);
-                    $removed_cards = explode(";", $rcards[1]);
-                    $xtoken = $removed_cards[0];
-                    $response = Customer::delete($xtoken);
-                }else{
-                    foreach($rcards as $card){
-                        if($card != "") {
-                            $xcard = explode(";", $card);
-
-                            $custToken = $xcard[0];
-                            $cardToken = $xcard[1];
-                            $this->deleteEverypayCustomerCard($this->_secretKey, $custToken, $cardToken, $vault);
-                        }
-                    }
-                }
-
-            }
-
-
-            $customer_id = $request_data['customer_id'];
-
-            $this->updateVault($vault, $empty_vault, $customer_id);
-
+        if ($removed_cards == "") {
+            return;
         }
+
+        $vault = $request_data['everypay_vault'];
+        $rcards = explode(",", $removed_cards);
+
+        if (sizeof($rcards) <= 0) {
+            return;
+        }
+
+        if ($empty_vault == true) {
+            Everypay::setApiKey($this->_secretKey);
+            $removed_cards = explode(";", $rcards[1]);
+            $xtoken = $removed_cards[0];
+            $response = Customer::delete($xtoken);
+        } else {
+            foreach($rcards as $card){
+                if($card != "") {
+                    $xcard = explode(";", $card);
+
+                    $custToken = $xcard[0];
+                    $cardToken = $xcard[1];
+                    $this->deleteEverypayCustomerCard($this->_secretKey, $custToken, $cardToken, $vault);
+                }
+            }
+        }
+        $customer_id = $request_data['customer_id'];
+        $this->updateVault($vault, $empty_vault, $customer_id);
     }
 
     private function updateVault($vault, $empty_vault, $customer_id)
