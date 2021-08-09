@@ -53,21 +53,22 @@ class ClientSale implements ClientInterface
     }
 
     /**
-     * Places request to gateway. Returns result as ENV array
-     *
+     * Places request to the gateway.
      * @param TransferInterface $transferObject
      * @return array
      * @throws Exception
      */
-    public function placeRequest(TransferInterface $transferObject)
+    public function placeRequest(TransferInterface $transferObject): array
     {
-        $this->logger->debug('Everypay', [
+        $this->logger->debug('everypay_transaction_init', [
             'initRequest' => $transferObject->getBody()
         ]);
 
-        Everypay::$isTest = $this->_sandboxMode;
         $requestData = $transferObject->getBody();
         $trxType = $this->checkTrxType($requestData);
+
+        Everypay::$isTest = $this->_sandboxMode;
+        Everypay::setApiKey($this->_secretKey);
 
         $this->proccessRemovedCards(
             $requestData['removed_cards'] ?? '',
@@ -113,7 +114,6 @@ class ClientSale implements ClientInterface
             $params['card'] = $cardToken;
         }
 
-        Everypay::setApiKey($this->_secretKey);
         $response = Payment::create($params);
 
         if (isset($response->error))
@@ -369,11 +369,10 @@ class ClientSale implements ClientInterface
         if ($empty_vault == true) {
             Everypay::setApiKey($this->_secretKey);
             $removed_cards = explode(";", $rcards[1]);
-            $xtoken = $removed_cards[0];
-            $response = Customer::delete($xtoken);
+            $response = Customer::delete($removed_cards[0]);
         } else {
             foreach($rcards as $card){
-                if($card != "") {
+                if ($card != "") {
                     $xcard = explode(";", $card);
 
                     $custToken = $xcard[0];
@@ -382,8 +381,8 @@ class ClientSale implements ClientInterface
                 }
             }
         }
-        $customer_id = $request_data['customer_id'];
-        $this->updateVault($vault, $empty_vault, $customer_id);
+
+        $this->updateVault($vault, $empty_vault, $request_data['customer_id']);
     }
 
     private function updateVault($vault, $empty_vault, $customer_id)
