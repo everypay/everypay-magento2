@@ -60,8 +60,8 @@ class ClientSale implements ClientInterface
      */
     public function placeRequest(TransferInterface $transferObject): array
     {
-        $this->logger->debug('everypay_transaction_init', [
-            'initRequest' => $transferObject->getBody()
+        $this->logger->debug('everypay_logs', [
+            'pre_send_request' => $transferObject->getBody()
         ]);
 
         $requestData = $transferObject->getBody();
@@ -147,9 +147,9 @@ class ClientSale implements ClientInterface
 
         $response = $this->generateResponseForCode($rcode, $pmt);
 
-        $this->logger->debug('everypay_transaction', [
-             'request' => $transferObject->getBody(),
-             'response' => $response
+        $this->logger->debug('everypay_logs', [
+             'api_request' => $transferObject->getBody(),
+             'api_response' => $response
          ]);
 
         return $response;
