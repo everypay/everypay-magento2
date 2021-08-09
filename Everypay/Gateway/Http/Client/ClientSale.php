@@ -5,8 +5,8 @@
  */
 namespace Everypay\Everypay\Gateway\Http\Client;
 
+use Exception;
 use Magento\Customer\Api\CustomerRepositoryInterface;
-use Magento\Framework\App\Action\Context;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
@@ -15,6 +15,7 @@ use Everypay\Everypay\Model\Ui\EverypayConfig;
 use Everypay\Everypay;
 use Everypay\Payment;
 use Everypay\Customer;
+use Psr\Log\LoggerInterface;
 
 
 class ClientSale implements ClientInterface
@@ -29,16 +30,14 @@ class ClientSale implements ClientInterface
     private $epConfig;
 
     /**
-     * @param Logger $logger
+     * @param LoggerInterface $logger
      * @param EverypayConfig $epConfig
-     * @param Context $context
      * @param PageFactory $resultPageFactory
      * @param CustomerRepositoryInterface $customerRepositoryInterface
      */
     public function __construct(
-        Logger $logger,
+        LoggerInterface $logger,
         EverypayConfig $epConfig,
-        Context $context,
         PageFactory $resultPageFactory,
         CustomerRepositoryInterface $customerRepositoryInterface
     ) {
@@ -62,10 +61,13 @@ class ClientSale implements ClientInterface
      *
      * @param TransferInterface $transferObject
      * @return array
+     * @throws Exception
      */
     public function placeRequest(TransferInterface $transferObject)
     {
-        $this->logger->debug(['initRequest' => $transferObject->getBody()]);
+        $this->logger->debug('Everypay', [
+            'initRequest' => $transferObject->getBody()
+        ]);
 
         Everypay::$isTest = $this->_sandboxMode;
         $requestData = $transferObject->getBody();
@@ -83,7 +85,7 @@ class ClientSale implements ClientInterface
         $amount = floatval($requestData['AMOUNT'])*100;
 
         if (!$token || !$amount) {
-            throw new \Exception('Token or amount error.');
+            throw new Exception('Token or amount error.');
         }
 
         $params = array(
@@ -148,7 +150,7 @@ class ClientSale implements ClientInterface
 
         $response = $this->generateResponseForCode($rcode, $pmt);
 
-        $this->logger->debug([
+        $this->logger->debug('everypay_transaction', [
              'request' => $transferObject->getBody(),
              'response' => $response
          ]);

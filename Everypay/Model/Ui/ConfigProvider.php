@@ -7,6 +7,7 @@ namespace Everypay\Everypay\Model\Ui;
 
 use Magento\Checkout\Model\ConfigProviderInterface;
 use Everypay\Everypay\Gateway\Http\Client\ClientMock;
+use Magento\Framework\Locale\Resolver;
 
 /**
  * Class ConfigProvider
@@ -16,10 +17,23 @@ final class ConfigProvider implements ConfigProviderInterface
     const CODE = 'everypay';
     private $epConfig;
 
-    public function __construct(
-        EverypayConfig $epConfig
-    ) {
+    /**
+     * @var Resolver
+     */
+    private $localeResolver;
+
+    public function __construct(EverypayConfig $epConfig, Resolver $localeResolver) {
         $this->epConfig = $epConfig;
+        $this->localeResolver = $localeResolver;
+    }
+
+    public function getLocale(): string
+    {
+        if ($this->localeResolver->getLocale() !== 'el_GR') {
+            return 'en';
+        }
+
+        return 'el';
     }
 
     /**
@@ -39,7 +53,7 @@ final class ConfigProvider implements ConfigProviderInterface
                     ],
                     'publicKey' => $this->epConfig->getPublicKey(),
                     'sandboxMode' => $this->epConfig->getSandboxMode(),
-                    'locale' => $this->epConfig->getLocale(),
+                    'locale' => $this->getLocale(),
                     'token' => null,
                     'installments' => $this->epConfig->getInstallmentsPlan(),
                     'saveCard' => false,

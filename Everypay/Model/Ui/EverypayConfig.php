@@ -1,78 +1,47 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: sp
- * Date: 20/12/2018
- * Time: 15:09
- */
 
 namespace Everypay\Everypay\Model\Ui;
+
+use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class EverypayConfig
 {
     /**
-     * Core store config
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     * @var ScopeConfigInterface
      */
-    protected $_scopeConfig;
-    protected $_resolver;
+    private $scopeConfig;
 
-    /*
-     * @var \Everypay\Framework\App\Config\ScopeConfigInterface $scopeConfig
+    /**
+     * @param ScopeConfigInterface $scopeConfig
      */
-    public function __construct(
-        \Magento\Framework\Locale\Resolver $resolver,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-    ){
-        $this->_resolver = $resolver;
-        $this->_scopeConfig = $scopeConfig;
+    public function __construct(ScopeConfigInterface $scopeConfig){
+        $this->scopeConfig = $scopeConfig;
     }
-
 
     public function getPublicKey()
     {
-        $pk = $this->_scopeConfig->getValue(
+        return $this->scopeConfig->getValue(
             'payment/everypay/merchant_public_key'
         );
-        return $pk;
     }
 
     public function getSecretKey()
     {
-        $sk = $this->_scopeConfig->getValue(
+        return $this->scopeConfig->getValue(
             'payment/everypay/merchant_secret_key'
         );
-        return $sk;
     }
 
     public function getSandboxMode()
     {
-        $sb = $this->_scopeConfig->getValue(
+        return $this->scopeConfig->getValue(
             'payment/everypay/sandbox'
         );
-        return $sb;
-    }
-
-    public function getLocale()
-    {
-        $locale = $this->_resolver->getLocale();
-        if ($locale === 'el_GR')
-        {
-
-            $locale = 'el';
-
-
-        }else {
-
-            $locale = 'en';
-
-        }
-        return $locale;
     }
 
     public function getInstallmentsPlan()
     {
-        $_installments = $this->_scopeConfig->getValue(
+        $_installments = $this->scopeConfig->getValue(
             'payment/everypay/installments'
         );
 
