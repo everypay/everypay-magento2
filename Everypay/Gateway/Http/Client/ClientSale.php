@@ -16,7 +16,6 @@ use Everypay\Payment;
 use Everypay\Customer;
 use Psr\Log\LoggerInterface;
 
-
 class ClientSale implements ClientInterface
 {
     const SUCCESS = 1;
@@ -26,7 +25,13 @@ class ClientSale implements ClientInterface
      * @var Logger
      */
     private $logger;
+
     private $epConfig;
+
+    /**
+     * @var CustomerRepositoryInterface
+     */
+    private $_customerRepositoryInterface;
 
     /**
      * @param LoggerInterface $logger
@@ -43,7 +48,7 @@ class ClientSale implements ClientInterface
 
         $secretKey = $this->epConfig->getSecretKey();
         $publicKey = $this->epConfig->getPublicKey();
-        $sandboxMode = $this->epConfig->getSandboxMode();
+        $sandboxMode = $this->epConfig->isSandboxMode();
 
         $this->_secretKey = $secretKey;
         $this->_publicKey = $publicKey;
@@ -100,14 +105,14 @@ class ClientSale implements ClientInterface
                 $existing_customer = $this->getEverypayCustomer($requestData['customer_id']);
             }
 
-            if ($existing_customer !== ''){
+            if ($existing_customer !== '') {
                 $params['customer'] = $existing_customer;
             } else {
                 $params['create_customer'] = 1;
             }
         }
 
-        if ($trxType === 'payCustomer'){
+        if ($trxType === 'payCustomer') {
             $customerToken = $requestData['customer_token'];
             $cardToken = $requestData['card_token'];
             $params['customer'] = $customerToken;
@@ -116,11 +121,10 @@ class ClientSale implements ClientInterface
 
         $response = Payment::create($params);
 
-        if (isset($response->error))
-        {
+        if (isset($response->error)) {
             $rcode = 0;
             $pmt = 'error';
-        }else {
+        } else {
             $rcode = 1;
             $pmt = $response;
 
@@ -142,7 +146,6 @@ class ClientSale implements ClientInterface
 
                 $this->updateCustomer($requestData['customer_id'], $new_card, $vault);
             }
-
         }
 
         $response = $this->generateResponseForCode($rcode, $pmt);
@@ -162,14 +165,13 @@ class ClientSale implements ClientInterface
      */
     protected function checkTrxType($data): string
     {
-
         if (!empty($data['customer_token']) && !empty($data['card_token'])) {
             return 'payCustomer';
         }
 
-        if (!empty($data['token'])){
-            if (!empty($data['save_card'])){
-               return 'paySave';
+        if (!empty($data['token'])) {
+            if (!empty($data['save_card'])) {
+                return 'paySave';
             }
             return 'pay';
         }
@@ -185,11 +187,9 @@ class ClientSale implements ClientInterface
      */
     protected function generateResponseForCode($resultCode, $pmt)
     {
-
-        if($pmt === 'error'){
+        if ($pmt === 'error') {
             $trx_array = [];
-        }
-        else{
+        } else {
             $trx_array = [
                 'RESULT_CODE' => $resultCode,
                 'TXN_ID' => $pmt->token,
@@ -240,7 +240,7 @@ class ClientSale implements ClientInterface
         if ($customerId) {
             $customer = $this->_customerRepositoryInterface->getById($customerId);
 
-            $vault_data = json_decode($vault,true);
+            $vault_data = json_decode($vault, true);
             $vault_data[] = $saved_card;
             $everypay_vault['cards'] = $vault_data;
 
@@ -248,7 +248,6 @@ class ClientSale implements ClientInterface
 
             $customer->setCustomAttribute('everypay_vault', $vault_data);
             $this->_customerRepositoryInterface->save($customer);
-
         }
     }
 
@@ -259,13 +258,13 @@ class ClientSale implements ClientInterface
             $customer = $this->_customerRepositoryInterface->getById($customerId);
             $vault = $customer->getCustomAttribute('everypay_vault')->getValue();
 
-            if($vault === null){
+            if ($vault === null) {
                 return '';
             }
 
-            $vault = json_decode($vault,true);
+            $vault = json_decode($vault, true);
 
-            if (key_exists('cards',$vault)){
+            if (key_exists('cards', $vault)) {
                 return $vault['cards'][0]['custToken'];
             }
         }
@@ -274,14 +273,14 @@ class ClientSale implements ClientInterface
 
     private function deleteEverypayCustomerCard($username, $cus_token, $crd_token, $vault)
     {
-        if($this->_sandboxMode){
+        if ($this->_sandboxMode) {
             $server = 'sandbox-api.everypay.gr';
-        }else{
+        } else {
             $server = 'api.everypay.gr';
         }
 
 
-        $vault = json_decode($vault,true);
+        $vault = json_decode($vault, true);
         $new_default_card = $vault[0]['crdToken'];
 
         $data = [
@@ -371,7 +370,7 @@ class ClientSale implements ClientInterface
             $removed_cards = explode(";", $rcards[1]);
             $response = Customer::delete($removed_cards[0]);
         } else {
-            foreach($rcards as $card){
+            foreach ($rcards as $card) {
                 if ($card != "") {
                     $xcard = explode(";", $card);
 
@@ -387,26 +386,23 @@ class ClientSale implements ClientInterface
 
     private function updateVault($vault, $empty_vault, $customer_id)
     {
+        if (!$customer_id) {
+            return;
+        }
         $customerId = $customer_id;
 
-        if ($customerId) {
-            if ($empty_vault == true) {
-                $vault_data = "";
-                $everypay_vault['cards'] = $vault_data;
-            } else {
-                $vault_data = $vault;
-                $everypay_vault['cards'] = json_decode($vault_data,true);
-                $vault_data = json_encode($everypay_vault);
-            }
-        }else {
-            return;
+        if ($empty_vault == true) {
+            $vault_data = "";
+            $everypay_vault['cards'] = $vault_data;
+        } else {
+            $vault_data = $vault;
+            $everypay_vault['cards'] = json_decode($vault_data, true);
+            $vault_data = json_encode($everypay_vault);
         }
 
         $customer = $this->_customerRepositoryInterface->getById($customerId);
 
         $customer->setCustomAttribute('everypay_vault', $vault_data);
         $this->_customerRepositoryInterface->save($customer);
-
-
     }
 }

@@ -28,13 +28,6 @@
         </arguments>
     </virtualType>
 
-    <!-- Logger, initialized with EverypayEverypayConfig -->
-    <virtualType name="EverypayEverypayLogger" type="Magento\Payment\Model\Method\Logger">
-        <arguments>
-            <argument name="config" xsi:type="object">EverypayEverypayConfig</argument>
-        </arguments>
-    </virtualType>
-
     <!-- Commands infrastructure -->
     <virtualType name="EverypayEverypayCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
         <arguments>

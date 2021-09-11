@@ -52,7 +52,7 @@ final class ConfigProvider implements ConfigProviderInterface
                         ClientMock::FAILURE => __('Fail')
                     ],
                     'publicKey' => $this->epConfig->getPublicKey(),
-                    'sandboxMode' => $this->epConfig->getSandboxMode(),
+                    'sandboxMode' => $this->epConfig->isSandboxMode(),
                     'locale' => $this->getLocale(),
                     'token' => null,
                     'installments' => $this->epConfig->getInstallmentsPlan(),
