@@ -261,8 +261,6 @@ define(
                 window.checkoutConfig.payment.everypay.customerToken = '';
                 window.checkoutConfig.payment.everypay.cardToken = '';
                 $('#everypay-save-card-container').css('display','block');
-
-                return true;
             },
 
             getSavedCards: function() {
