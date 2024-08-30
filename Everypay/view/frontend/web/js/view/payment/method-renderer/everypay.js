@@ -51,6 +51,7 @@ define(
             initialize: function () {
                 this._super();
                 this.setBillingData();
+                this.setShippingData();
                 this.EverypayModal = new EverypayModal();
                 return this;
             },
@@ -58,14 +59,14 @@ define(
             setPayload: function () {
                 let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
-                this.payload = Payform.createPayload(this.amount, installments, this.billingData);
+                this.payload = Payform.createPayload(this.amount, installments, this.billingData, this.shippingData);
             },
 
             payWithSavedCard: function () {
                 this.EverypayTokenizationModal = new EverypayModal();
                 let installments  = this.getInstallments();
                 let amount = this.getTotal().total;
-                let payload = Payform.createTokenizationPayload(amount, installments, this.billingData);
+                let payload = Payform.createTokenizationPayload(amount, installments, this.billingData, this.shippingData);
                 Payform.tokenize(payload, this.EverypayTokenizationModal);
             },
 
@@ -140,6 +141,33 @@ define(
 
                     if (magentoBillingData.countryId) {
                         this.billingData.country = magentoBillingData.countryId;
+                    }
+                } catch (e) {
+                    console.log(e)
+                }
+
+            },
+
+            setShippingData: function () {
+
+                this.shippingData = {
+                    email: quote.guestEmail,
+                    phone: null
+                };
+
+                try {
+                    let magentoShippingData = quote.shippingAddress();
+
+                    if (!magentoShippingData) {
+                        return;
+                    }
+
+                    if (magentoShippingData.email) {
+                        this.shippingData.email = magentoShippingData.email;
+                    }
+
+                    if (magentoShippingData.telephone) {
+                        this.shippingData.phone = magentoShippingData.telephone;
                     }
                 } catch (e) {
                     console.log(e)

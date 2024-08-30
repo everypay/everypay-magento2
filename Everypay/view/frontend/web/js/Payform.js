@@ -30,7 +30,7 @@ define([
             });
         },
 
-        createPayload: (amount, installments, billingData) => {
+        createPayload: (amount, installments, billingData, shippingData) => {
             let payload = {
                 amount: amount,
                 pk:  window.checkoutConfig.payment.everypay.publicKey,
@@ -42,6 +42,8 @@ define([
                         country: billingData.country,
                         city: billingData.city
                     },
+                    phone: shippingData.phone,
+                    email: shippingData.email,
                 }
             };
 
@@ -68,7 +70,7 @@ define([
 
         },
 
-        createTokenizationPayload: function (amount, installments, billingData) {
+        createTokenizationPayload: function (amount, installments, billingData, shippingData) {
 
             let cardDetails = Helpers.extractCardDetailsFromWindow();
 
@@ -91,6 +93,8 @@ define([
                         country: billingData.country,
                         city: billingData.city
                     },
+                    phone: shippingData.phone,
+                    email: shippingData.email,
                 },
                 display: {
                     cvvInput: false
