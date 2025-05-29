@@ -1,5 +1,5 @@
 /**
- * Copyright © 2021 Everypay. All rights reserved.
+ * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 /*browser:true*/
