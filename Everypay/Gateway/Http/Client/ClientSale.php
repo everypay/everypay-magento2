@@ -14,6 +14,7 @@ use Everypay\Everypay\Model\Ui\EverypayConfig;
 use Everypay\Everypay;
 use Everypay\Payment;
 use Everypay\Customer;
+use Psr\Log\LoggerInterface;
 
 
 class ClientSale implements ClientInterface
@@ -22,6 +23,9 @@ class ClientSale implements ClientInterface
     const FAILURE = 0;
 
     private $epConfig;
+    /**
+     * @var Logger
+     */
     private $logger;
     private $secretKey;
     private $publicKey;
@@ -29,14 +33,14 @@ class ClientSale implements ClientInterface
     private $customerRepositoryInterface;
 
     /**
-     * @param Logger $logger
+     * @param LoggerInterface $logger
      * @param EverypayConfig $epConfig
      * @param CustomerRepositoryInterface $customerRepositoryInterface
      */
     public function __construct(
+        LoggerInterface $logger,
         EverypayConfig $epConfig,
         CustomerRepositoryInterface $customerRepositoryInterface,
-        Logger $logger,
     ) {
         $this->logger = $logger;
         $this->epConfig = $epConfig;
@@ -109,6 +113,8 @@ class ClientSale implements ClientInterface
         }
 
         $response = Payment::create($params);
+
+        $this->logger->debug('PAYMENT AFTER', [$response]);
 
         if (isset($response->error)) {
             $rcode = 0;
