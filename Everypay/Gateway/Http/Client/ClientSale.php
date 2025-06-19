@@ -31,6 +31,13 @@ class ClientSale implements ClientInterface
     private $publicKey;
     private $sandboxMode;
     private $customerRepositoryInterface;
+    private $isGooglePayEnabled;
+    private $googlePayCountryCode;
+    private $googlePayMerchantName;
+    private $googlePayMerchantUrl;
+    private $googlePayAllowedCardNetworks;
+    private $googlePayAllowedAuthMethods;
+    private $googlePayButtonColor;
 
     /**
      * @param LoggerInterface $logger
@@ -47,6 +54,13 @@ class ClientSale implements ClientInterface
         $this->secretKey = $epConfig->getSecretKey();
         $this->publicKey = $epConfig->getPublicKey();
         $this->sandboxMode = $epConfig->getSandboxMode();
+        $this->isGooglePayEnabled = $epConfig->getIsGooglePayEnabled();
+        $this->googlePayCountryCode = $epConfig->getGooglePayCountryCode();
+        $this->googlePayMerchantName = $epConfig->getGooglePayMerchantName();
+        $this->googlePayMerchantUrl = $epConfig->getGooglePayMerchantUrl();
+        $this->googlePayAllowedAuthMethods = $epConfig->getGooglePayAllowedAuthMethods();
+        $this->googlePayAllowedCardNetworks = $epConfig->getGooglePayAllowedCardNetworks();
+        $this->googlePayButtonColor = $epConfig->getGooglePayButtonColor();
         $this->customerRepositoryInterface = $customerRepositoryInterface;
     }
 

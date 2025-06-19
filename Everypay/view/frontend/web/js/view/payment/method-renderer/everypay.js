@@ -57,9 +57,14 @@ define(
             },
 
             setPayload: function () {
-                let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
-                this.payload = Payform.createPayload(this.amount, installments, this.billingData, this.shippingData);
+                this.payload = Payform.createPayload(
+                    this.amount,
+                    this.getInstallments(),
+                    this.billingData,
+                    this.shippingData,
+                    this.getOtherPaymentMethods()
+                );
             },
 
             payWithSavedCard: function () {
@@ -190,7 +195,6 @@ define(
                 return data;
 
             },
-
 
             getInstallments: function(){
 
@@ -363,6 +367,18 @@ define(
                 }
 
                 this.loadPayform();
+            },
+
+            getOtherPaymentMethods: function () {
+                if (!window.checkoutConfig.payment.everypay.isGooglePayEnabled) {
+                    return null;
+                }
+
+                let result = {};
+
+                result.googlePay = window.checkoutConfig.payment.everypay.googlePay;
+
+                return result;
             },
         });
     }

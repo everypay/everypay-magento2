@@ -43,30 +43,40 @@ final class ConfigProvider implements ConfigProviderInterface
      */
     public function getConfig()
     {
+        $config = [
+            'transactionResults' => [
+                ClientMock::SUCCESS => __('Success'),
+                ClientMock::FAILURE => __('Fail')
+            ],
+            'publicKey' => $this->epConfig->getPublicKey(),
+            'sandboxMode' => $this->epConfig->getSandboxMode(),
+            'locale' => $this->getLocale(),
+            'token' => null,
+            'installments' => $this->epConfig->getInstallmentsPlan(),
+            'saveCard' => false,
+            'customerToken' => null,
+            'cardToken' =>  null,
+            'everypayVault' => null,
+            'removedCards' => null,
+            'emptyVault' => false,
+            'max_installments' => null,
+            'isGooglePayEnabled' => $this->epConfig->getIsGooglePayEnabled(),
+        ];
+
+        if ($this->epConfig->getIsGooglePayEnabled()) {
+            $config['googlePay'] = [
+                'countryCode' => $this->epConfig->getGooglePayCountryCode(),
+                'merchantName' => $this->epConfig->getGooglePayMerchantName(),
+                'merchantUrl' => $this->epConfig->getGooglePayMerchantUrl(),
+                'allowedCardNetworks' => $this->epConfig->getGooglePayAllowedCardNetworks(),
+                'allowedAuthMethods' => $this->epConfig->getGooglePayAllowedAuthMethods()
+            ];
+        }
 
         return [
             'payment' => [
-                self::CODE => [
-                    'transactionResults' => [
-                        ClientMock::SUCCESS => __('Success'),
-                        ClientMock::FAILURE => __('Fail')
-                    ],
-                    'publicKey' => $this->epConfig->getPublicKey(),
-                    'sandboxMode' => $this->epConfig->getSandboxMode(),
-                    'locale' => $this->getLocale(),
-                    'token' => null,
-                    'installments' => $this->epConfig->getInstallmentsPlan(),
-                    'saveCard' => false,
-                    'customerToken' => null,
-                    'cardToken' =>  null,
-                    'everypayVault' => null,
-                    'removedCards' => null,
-                    'emptyVault' => false,
-                    'max_installments' => null
-                ]
+                self::CODE => $config
             ]
         ];
     }
-
-
 }
