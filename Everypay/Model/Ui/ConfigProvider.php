@@ -61,6 +61,7 @@ final class ConfigProvider implements ConfigProviderInterface
             'emptyVault' => false,
             'max_installments' => null,
             'isGooglePayEnabled' => $this->epConfig->getIsGooglePayEnabled(),
+            'isApplePayEnabled' => $this->epConfig->getIsApplePayEnabled(),
         ];
 
         if ($this->epConfig->getIsGooglePayEnabled()) {
@@ -70,6 +71,15 @@ final class ConfigProvider implements ConfigProviderInterface
                 'merchantUrl' => $this->epConfig->getGooglePayMerchantUrl(),
                 'allowedCardNetworks' => $this->epConfig->getGooglePayAllowedCardNetworks(),
                 'allowedAuthMethods' => $this->epConfig->getGooglePayAllowedAuthMethods()
+            ];
+        }
+
+        if ($this->epConfig->getIsApplePayEnabled()) {
+            $config['applePay'] = [
+                'countryCode' => $this->epConfig->getApplePayCountryCode(),
+                'merchantName' => $this->epConfig->getApplePayMerchantName(),
+                'merchantUrl' => $this->epConfig->getApplePayMerchantUrl(),
+                'allowedCardNetworks' => $this->epConfig->getApplePayAllowedCardNetworks()
             ];
         }
 

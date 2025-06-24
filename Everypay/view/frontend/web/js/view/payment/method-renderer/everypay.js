@@ -281,7 +281,7 @@ define(
                     savedCards(jsonCards.cards);
                     window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                     return savedCards;
-                }else{
+                } else {
                     savedCards(JSON.parse('[]'));
                     window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                     return savedCards;
@@ -304,9 +304,10 @@ define(
                     window.checkoutConfig.payment.everypay.removedCards = xremovedCards;
 
                     savedCards.remove(this);
-                    if (savedCards().length > 0){
+
+                    if (savedCards().length > 0) {
                         window.checkoutConfig.payment.everypay.everypayVault = savedCards;
-                    }else{
+                    } else {
                         $('#everypay-new-card').css('display','none');
                         window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                         window.checkoutConfig.payment.everypay.emptyVault = true;
@@ -370,13 +371,22 @@ define(
             },
 
             getOtherPaymentMethods: function () {
-                if (!window.checkoutConfig.payment.everypay.isGooglePayEnabled) {
+                if (
+                    !window.checkoutConfig.payment.everypay.isGooglePayEnabled
+                    && !window.checkoutConfig.payment.everypay.isApplePayEnabled
+                ) {
                     return null;
                 }
 
                 let result = {};
 
-                result.googlePay = window.checkoutConfig.payment.everypay.googlePay;
+                if (window.checkoutConfig.payment.everypay.googlePay) {
+                    result.googlePay = window.checkoutConfig.payment.everypay.googlePay;
+                }
+
+                if (window.checkoutConfig.payment.everypay.applePay) {
+                    result.applePay = window.checkoutConfig.payment.everypay.applePay;
+                }
 
                 return result;
             },

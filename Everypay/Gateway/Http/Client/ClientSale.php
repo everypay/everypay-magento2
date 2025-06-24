@@ -38,6 +38,12 @@ class ClientSale implements ClientInterface
     private $googlePayAllowedCardNetworks;
     private $googlePayAllowedAuthMethods;
     private $googlePayButtonColor;
+    private $isApplePayEnabled;
+    private $applePayCountryCode;
+    private $applePayMerchantName;
+    private $applePayMerchantUrl;
+    private $applePayAllowedCardNetworks;
+    private $applePayButtonColor;
 
     /**
      * @param LoggerInterface $logger
@@ -61,6 +67,12 @@ class ClientSale implements ClientInterface
         $this->googlePayAllowedAuthMethods = $epConfig->getGooglePayAllowedAuthMethods();
         $this->googlePayAllowedCardNetworks = $epConfig->getGooglePayAllowedCardNetworks();
         $this->googlePayButtonColor = $epConfig->getGooglePayButtonColor();
+        $this->isApplePayEnabled = $epConfig->getIsApplePayEnabled();
+        $this->applePayCountryCode = $epConfig->getApplePayCountryCode();
+        $this->applePayMerchantName = $epConfig->getApplePayMerchantName();
+        $this->applePayMerchantUrl = $epConfig->getApplePayMerchantUrl();
+        $this->applePayAllowedCardNetworks = $epConfig->getApplePayAllowedCardNetworks();
+        $this->applePayButtonColor = $epConfig->getApplePayButtonColor();
         $this->customerRepositoryInterface = $customerRepositoryInterface;
     }
 

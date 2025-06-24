@@ -33,6 +33,12 @@
                 <googlepay_allowed_card_networks>VISA,MASTERCARD</googlepay_allowed_card_networks>
                 <googlepay_allowed_auth_methods>CRYPTOGRAM_3DS,PAN_ONLY</googlepay_allowed_auth_methods>
                 <googlepay_button_color>black</googlepay_button_color>
+                <applepay_feature>0</applepay_feature>
+                <applepay_country_code>US</applepay_country_code>
+                <applepay_merchant_name>MerchantName</applepay_merchant_name>
+                <applepay_merchant_url></applepay_merchant_url>
+                <applepay_allowed_card_networks>VISA,MASTERCARD</applepay_allowed_card_networks>
+                <applepay_button_color>black</applepay_button_color>
             </everypay>
         </payment>
     </default>

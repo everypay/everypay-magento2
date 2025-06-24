@@ -111,4 +111,50 @@ class EverypayConfig
             'payment/everypay/googlepay_button_color'
         );
     }
+
+    public function getIsApplePayEnabled()
+    {
+        $isApplePayEnabled = $this->scopeConfig->getValue(
+            'payment/everypay/applepay_feature'
+        );
+
+        return boolval($isApplePayEnabled);
+    }
+
+    public function getApplePayCountryCode()
+    {
+        return $this->scopeConfig->getValue(
+            'payment/everypay/applepay_country_code'
+        );
+    }
+
+    public function getApplePayMerchantName()
+    {
+        return $this->scopeConfig->getValue(
+            'payment/everypay/applepay_merchant_name'
+        );
+    }
+
+    public function getApplePayMerchantUrl()
+    {
+        return $this->scopeConfig->getValue(
+            'payment/everypay/applepay_merchant_url'
+        );
+    }
+
+    public function getApplePayAllowedCardNetworks()
+    {
+        $alowedCardNetworks = $this->scopeConfig->getValue(
+            'payment/everypay/applepay_allowed_card_networks'
+        );
+
+        return explode(',', $alowedCardNetworks);
+    }
+
+    public function getApplePayButtonColor()
+    {
+        return $this->scopeConfig->getValue(
+            'payment/everypay/applepay_button_color'
+        );
+    }
 }
