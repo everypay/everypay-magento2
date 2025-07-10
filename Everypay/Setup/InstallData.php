@@ -47,12 +47,11 @@ class InstallData implements InstallDataInterface
         ]);
 
         $attribute = $this->eavConfig->getAttribute(Customer::ENTITY, 'everypay_vault');
-        $attribute->setData('used_in_forms',[
-                'adminhtml_customer',
-                'customer_account_create',
-                'customer_account_edit'
-            ]
-            );
+        $attribute->setData('used_in_forms', [
+            'adminhtml_customer',
+            'customer_account_create',
+            'customer_account_edit'
+        ]);
         $attribute->save();
     }
 }

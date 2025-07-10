@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!--
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 -->
@@ -9,7 +9,7 @@
     <system>
         <section id="payment">
             <group id="everypay" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Everypay (pay with Credit/Debit card))</label>
+                <label>Everypay (pay with Credit/Debit card)</label>
 
                 <field id="title" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Title</label>
@@ -51,6 +51,121 @@
                     <label>Sort Order</label>
                     <frontend_class>validate-number</frontend_class>
                 </field>
+
+                <!-- Google Play settings begin -->
+                <field id="googlepay_feature" translate="label" type="select" sortOrder="170" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Google Pay</label>
+                    <comment><![CDATA[⚠️ Please contact Support to Enable/Disable Google Pay Payments Processing]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="googlepay_country_code" translate="label" type="select" sortOrder="171" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Country</label>
+                    <comment><![CDATA[Billing country for Google Pay]]></comment>
+                    <source_model>Magento\Directory\Model\Config\Source\Country</source_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="googlepay_merchant_name" translate="label" type="text" sortOrder="172" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Merchant Name</label>
+                    <comment><![CDATA[The name to be displayed on the payform modal]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="googlepay_merchant_url" translate="label" type="text" sortOrder="173" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Merchant URL</label>
+                    <comment><![CDATA[Your store URL (e.g. https://my-store.com)]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="googlepay_allowed_card_networks" translate="label" type="text" sortOrder="174" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Allowed Card Networks</label>
+                    <comment><![CDATA[Comma-separated (e.g. VISA,MASTERCARD)]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="googlepay_allowed_auth_methods" translate="label" type="text" sortOrder="175" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Allowed Auth Methods</label>
+                    <comment><![CDATA[Comma-separated (e.g. CRYPTOGRAM_3DS,PAN_ONLY)]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="googlepay_button_color" translate="label" type="text" sortOrder="176" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Button Color</label>
+                    <comment><![CDATA[Available options are black or white]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="googlepay_feature">1</field>
+                    </depends>
+                </field>
+                <!-- Google Play settings end -->
+
+                <!-- Apple Play settings begin -->
+                <field id="applepay_feature" translate="label" type="select" sortOrder="200" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Apple Pay</label>
+                    <comment><![CDATA[⚠️ Please contact Support to Enable/Disable Apple Pay Payments Processing]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="applepay_country_code" translate="label" type="select" sortOrder="201" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Country</label>
+                    <comment><![CDATA[Billing country for Apple Pay]]></comment>
+                    <source_model>Magento\Directory\Model\Config\Source\Country</source_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="applepay_merchant_name" translate="label" type="text" sortOrder="202" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Merchant Name</label>
+                    <comment><![CDATA[The name to be displayed on the payform modal]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="applepay_merchant_url" translate="label" type="text" sortOrder="203" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Merchant URL</label>
+                    <comment><![CDATA[Your store URL (e.g. https://my-store.com)]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+
+                <field id="applepay_register_merchant_url" translate="label" type="button" sortOrder="204" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <!-- <label>Register Merchant URL</label> -->
+                    <frontend_model>Everypay\Everypay\Block\System\Config\RegisterMerchantUrl</frontend_model>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+
+                <field id="applepay_allowed_card_networks" translate="label" type="text" sortOrder="205" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Allowed Card Networks</label>
+                    <comment><![CDATA[Comma-separated (e.g. VISA,MASTERCARD)]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+                <field id="applepay_button_color" translate="label" type="text" sortOrder="206" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Button Color</label>
+                    <comment><![CDATA[Available options are black or white]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="applepay_feature">1</field>
+                    </depends>
+                </field>
+                <!-- Apple Play settings end -->
             </group>
         </section>
     </system>

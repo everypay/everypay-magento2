@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 namespace Everypay\Everypay\Model\Ui;
@@ -43,30 +43,52 @@ final class ConfigProvider implements ConfigProviderInterface
      */
     public function getConfig()
     {
+        $config = [
+            'transactionResults' => [
+                ClientMock::SUCCESS => __('Success'),
+                ClientMock::FAILURE => __('Fail')
+            ],
+            'publicKey' => $this->epConfig->getPublicKey(),
+            'sandboxMode' => $this->epConfig->getSandboxMode(),
+            'locale' => $this->getLocale(),
+            'token' => null,
+            'installments' => $this->epConfig->getInstallmentsPlan(),
+            'saveCard' => false,
+            'customerToken' => null,
+            'cardToken' =>  null,
+            'everypayVault' => null,
+            'removedCards' => null,
+            'emptyVault' => false,
+            'max_installments' => null,
+            'isGooglePayEnabled' => $this->epConfig->getIsGooglePayEnabled(),
+            'isApplePayEnabled' => $this->epConfig->getIsApplePayEnabled()
+        ];
+
+        if ($this->epConfig->getIsGooglePayEnabled()) {
+            $config['googlePay'] = [
+                'countryCode' => $this->epConfig->getGooglePayCountryCode(),
+                'merchantName' => $this->epConfig->getGooglePayMerchantName(),
+                'merchantUrl' => $this->epConfig->getGooglePayMerchantUrl(),
+                'allowedCardNetworks' => $this->epConfig->getGooglePayAllowedCardNetworks(),
+                'allowedAuthMethods' => $this->epConfig->getGooglePayAllowedAuthMethods(),
+                'buttonColor' => $this->epConfig->getGooglePayButtonColor()
+            ];
+        }
+
+        if ($this->epConfig->getIsApplePayEnabled()) {
+            $config['applePay'] = [
+                'countryCode' => $this->epConfig->getApplePayCountryCode(),
+                'merchantName' => $this->epConfig->getApplePayMerchantName(),
+                'merchantUrl' => $this->epConfig->getApplePayMerchantUrl(),
+                'allowedCardNetworks' => $this->epConfig->getApplePayAllowedCardNetworks(),
+                'buttonColor' => $this->epConfig->getApplePayButtonColor()
+            ];
+        }
 
         return [
             'payment' => [
-                self::CODE => [
-                    'transactionResults' => [
-                        ClientMock::SUCCESS => __('Success'),
-                        ClientMock::FAILURE => __('Fail')
-                    ],
-                    'publicKey' => $this->epConfig->getPublicKey(),
-                    'sandboxMode' => $this->epConfig->getSandboxMode(),
-                    'locale' => $this->getLocale(),
-                    'token' => null,
-                    'installments' => $this->epConfig->getInstallmentsPlan(),
-                    'saveCard' => false,
-                    'customerToken' => null,
-                    'cardToken' =>  null,
-                    'everypayVault' => null,
-                    'removedCards' => null,
-                    'emptyVault' => false,
-                    'max_installments' => null
-                ]
+                self::CODE => $config
             ]
         ];
     }
-
-
 }

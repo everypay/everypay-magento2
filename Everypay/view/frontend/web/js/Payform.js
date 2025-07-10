@@ -1,5 +1,6 @@
 let isSandboxMode = window.checkoutConfig.payment.everypay.sandboxMode;
 let everypayUrl = 'https://js.everypay.gr/v3';
+let iframeSource = "Magento 2 CMS";
 
 if (isSandboxMode && isSandboxMode == 1) {
     console.log('Everypay sandbox mode enabled');
@@ -30,11 +31,12 @@ define([
             });
         },
 
-        createPayload: (amount, installments, billingData, shippingData) => {
+        createPayload: (amount, installments, billingData, shippingData, otherPaymentMethods) => {
             let payload = {
                 amount: amount,
                 pk:  window.checkoutConfig.payment.everypay.publicKey,
                 locale: window.checkoutConfig.payment.everypay.locale,
+                iframeSource: iframeSource,
                 data: {
                     billing: {
                         addressLine1: billingData.address,
@@ -47,8 +49,13 @@ define([
                 }
             };
 
-            if (installments.payform)
+            if (installments.payform) {
                 payload.installments = installments.payform;
+            }
+
+            if (otherPaymentMethods) {
+                payload.otherPaymentMethods = otherPaymentMethods;
+            }
 
             return payload;
         },
@@ -80,6 +87,7 @@ define([
             let payload = {
                 pk: window.checkoutConfig.payment.everypay.publicKey,
                 amount: amount,
+                iframeSource: iframeSource,
                 data: {
                     customerToken: cardDetails.customerToken,
                     cardType: cardDetails.cardType,

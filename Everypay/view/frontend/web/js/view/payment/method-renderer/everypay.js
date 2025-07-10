@@ -1,5 +1,5 @@
 /**
- * Copyright © 2021 Everypay. All rights reserved.
+ * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 /*browser:true*/
@@ -57,9 +57,14 @@ define(
             },
 
             setPayload: function () {
-                let installments  = this.getInstallments();
                 this.amount = this.getTotal().total;
-                this.payload = Payform.createPayload(this.amount, installments, this.billingData, this.shippingData);
+                this.payload = Payform.createPayload(
+                    this.amount,
+                    this.getInstallments(),
+                    this.billingData,
+                    this.shippingData,
+                    this.getOtherPaymentMethods()
+                );
             },
 
             payWithSavedCard: function () {
@@ -191,7 +196,6 @@ define(
 
             },
 
-
             getInstallments: function(){
 
                 let max_installments = 0;
@@ -277,7 +281,7 @@ define(
                     savedCards(jsonCards.cards);
                     window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                     return savedCards;
-                }else{
+                } else {
                     savedCards(JSON.parse('[]'));
                     window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                     return savedCards;
@@ -300,9 +304,10 @@ define(
                     window.checkoutConfig.payment.everypay.removedCards = xremovedCards;
 
                     savedCards.remove(this);
-                    if (savedCards().length > 0){
+
+                    if (savedCards().length > 0) {
                         window.checkoutConfig.payment.everypay.everypayVault = savedCards;
-                    }else{
+                    } else {
                         $('#everypay-new-card').css('display','none');
                         window.checkoutConfig.payment.everypay.everypayVault = savedCards;
                         window.checkoutConfig.payment.everypay.emptyVault = true;
@@ -363,6 +368,27 @@ define(
                 }
 
                 this.loadPayform();
+            },
+
+            getOtherPaymentMethods: function () {
+                if (
+                    !window.checkoutConfig.payment.everypay.isGooglePayEnabled
+                    && !window.checkoutConfig.payment.everypay.isApplePayEnabled
+                ) {
+                    return null;
+                }
+
+                let result = {};
+
+                if (window.checkoutConfig.payment.everypay.googlePay) {
+                    result.googlePay = window.checkoutConfig.payment.everypay.googlePay;
+                }
+
+                if (window.checkoutConfig.payment.everypay.applePay) {
+                    result.applePay = window.checkoutConfig.payment.everypay.applePay;
+                }
+
+                return result;
             },
         });
     }

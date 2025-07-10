@@ -1,0 +1,72 @@
+<button type="button" 
+        class="button" 
+        id="<?= $escaper->escapeHtmlAttr($block->getHtmlId()) ?>_button"
+        onclick="registerEverypayApplePayMerchantUrl()"
+        style="margin-left: 5px;">
+    <span><?= $escaper->escapeHtml($block->getButtonLabel()) ?></span>
+</button>
+
+<div id="<?= $escaper->escapeHtmlAttr($block->getHtmlId()) ?>_result" style="margin-top: 10px;"></div>
+
+<script type="text/javascript">
+
+require(['jquery'], function($) {
+    var button = document.getElementById('<?= $escaper->escapeJs($block->getHtmlId()) ?>_button');
+    var resultDiv = document.getElementById('<?= $escaper->escapeJs($block->getHtmlId()) ?>_result');
+
+    $(document).ready(function() {
+        var merchantUrlInput = $('input[id*="everypay_applepay_merchant_url"]');
+        var buttonElement = $('#<?= $escaper->escapeJs($block->getHtmlId()) ?>_button');
+        var initialMerchantUrl = merchantUrlInput.val();
+
+        merchantUrlInput.on('change keyup', function() {
+            var url = $(this).val();
+
+            if (url !== initialMerchantUrl) {
+                resultDiv.innerHTML = '<div style="font-weight: bold;">ℹ️ You must save configuration to register URL domain</div>';
+            } else {
+                resultDiv.innerHTML = '';
+            }
+
+            buttonElement.prop('disabled', url !== initialMerchantUrl);
+        });
+
+        buttonElement.prop('disabled', merchantUrlInput.val().length === 0);
+    });
+});
+
+function registerEverypayApplePayMerchantUrl() {
+    var button = document.getElementById('<?= $escaper->escapeJs($block->getHtmlId()) ?>_button');
+    var resultDiv = document.getElementById('<?= $escaper->escapeJs($block->getHtmlId()) ?>_result');
+
+    button.disabled = true;
+    button.innerHTML = '<span>Processing...</span>';
+    resultDiv.innerHTML = '<div style="color: #666;">Registering merchant...</div>';
+
+    require(['jquery'], function($) {
+        $.ajax({
+            url: '<?= $escaper->escapeUrl($block->getAjaxUrl()) ?>',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                form_key: FORM_KEY
+            },
+            success: function(response) {
+                if (response.success) {
+                    resultDiv.innerHTML = '<div style="color: green; font-weight: bold;">✓ ' + response.message + '</div>';
+                } else {
+                    resultDiv.innerHTML = '<div style="color: red; font-weight: bold;">✗ ' + response.message + '</div>';
+                }
+            },
+            error: function() {
+                resultDiv.innerHTML = '<div style="color: red; font-weight: bold;">✗ Registration failed</div>';
+            },
+            complete: function() {
+                button.disabled = false;
+                button.innerHTML = '<span><?= $escaper->escapeJs($block->getButtonLabel()) ?></span>';
+            }
+        });
+    });
+}
+
+</script>

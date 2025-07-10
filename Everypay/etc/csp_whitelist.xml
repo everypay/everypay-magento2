@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
+  <policies>
+
+    <!-- Images from your CDN or other hosts -->
+    <policy id="img-src">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+    <!-- Inline scripts + your JS libraries -->
+    <policy id="script-src">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+    <!-- AJAX / WebSocket calls -->
+    <policy id="connect-src">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+    <!-- Embedded frames (your iframe URLs) -->
+    <policy id="frame-src">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+    <!-- Webfonts -->
+    <policy id="font-src">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+    <!-- Forms that post to third‐party domains -->
+    <policy id="form-action">
+      <values>
+        <value id="everypay" type="host">*.everypay.gr</value>
+      </values>
+    </policy>
+
+  </policies>
+</csp_whitelist>

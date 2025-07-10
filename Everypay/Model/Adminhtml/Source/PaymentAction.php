@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright © 2016 Everypay. All rights reserved.
+ * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
 namespace Everypay\Everypay\Model\Adminhtml\Source;
