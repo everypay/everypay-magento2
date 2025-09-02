@@ -57,6 +57,8 @@ define(
             },
 
             setPayload: function () {
+                this.setBillingData();
+                this.setShippingData();
                 this.amount = this.getTotal().total;
                 this.payload = Payform.createPayload(
                     this.amount,
