@@ -19,7 +19,16 @@ class Info extends ConfigurableInfo
      */
     protected function getLabel($field)
     {
-        return __($field);
+        switch ($field) {
+            case 'payment_type':
+                return __('Payment Type');
+            case 'method_title':
+                return __('Payment Method');
+            case 'iris_token':
+                return __('IRIS Transaction Token');
+            default:
+                return __($field);
+        }
     }
 
     /**
@@ -33,8 +42,59 @@ class Info extends ConfigurableInfo
     {
         switch ($field) {
             case FraudHandler::FRAUD_MSG_LIST:
-                return implode('; ', $value);
+                return is_array($value) ? implode('; ', $value) : $value;
+            case 'payment_type':
+                return $value === 'IRIS' ? 'IRIS Bank Payment' : $value;
+            case 'method_title':
+                return $value ?: 'Everypay';
+            case 'iris_token':
+                return $value ? substr($value, 0, 20) . '...' : '';
         }
         return parent::getValueView($field, $value);
+    }
+
+    /**
+     * Get payment method title with IRIS indication
+     * @return string
+     */
+    public function getMethodTitle()
+    {
+        $payment = $this->getInfo();
+        $paymentType = $payment->getAdditionalInformation('payment_type');
+        $methodTitle = $payment->getAdditionalInformation('method_title');
+
+        // Check if this is an IRIS payment
+        if ($paymentType === 'IRIS' || $methodTitle === 'Everypay IRIS Bank Payment') {
+            return 'Everypay IRIS';
+        }
+
+        return $this->getMethod()->getTitle();
+    }
+
+    /**
+     * Get specific value from additional information
+     * @param string $key
+     * @return string|null
+     */
+    public function getAdditionalInformation($key)
+    {
+        $payment = $this->getInfo();
+        return $payment->getAdditionalInformation($key);
+    }
+
+    /**
+     * Get payment type display
+     * @return string
+     */
+    public function getPaymentType()
+    {
+        $payment = $this->getInfo();
+        $paymentType = $payment->getAdditionalInformation('payment_type');
+
+        if ($paymentType === 'IRIS') {
+            return 'IRIS Bank Payment';
+        }
+
+        return $paymentType ?: 'Credit Card';
     }
 }

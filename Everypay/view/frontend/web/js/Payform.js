@@ -28,6 +28,29 @@ define([
                     document.getElementById('epPlaceOrder').click();
                 }
 
+                if (response.response == 'error' && response.error) {
+                    console.error('Everypay payment error:', response.error);
+                    
+                    setTimeout(function () {
+                        if (everypayModal) {
+                            everypayModal.destroy();
+                        }
+                        
+                        // Show error message
+                        var errorMessage = response.error || 'Payment failed. Please try another payment method.';
+                        var messageContainer = document.querySelector('.message.message-error.error');
+                        if (!messageContainer) {
+                            var checkoutPage = document.querySelector('.checkout-container');
+                            if (checkoutPage) {
+                                var errorDiv = document.createElement('div');
+                                errorDiv.className = 'message message-error error';
+                                errorDiv.innerHTML = '<div>' + errorMessage + '</div>';
+                                checkoutPage.insertBefore(errorDiv, checkoutPage.firstChild);
+                            }
+                        }
+                    }, 1000);
+                }
+
             });
         },
 
@@ -54,6 +77,38 @@ define([
             }
 
             if (otherPaymentMethods) {
+                // Add IRIS if enabled
+                if (window.checkoutConfig.payment.everypay.isIrisEnabled && window.checkoutConfig.payment.everypay.iris) {
+                    let irisConfig = window.checkoutConfig.payment.everypay.iris;
+                    let callbackUrl = window.location.origin + '/everypay/iris/callback';
+                    
+                    // Generate a unique md reference for this transaction
+                    let md = 'magento_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    
+                    let iris = {
+                        merchantName: irisConfig.merchantName,
+                        country: irisConfig.country,
+                        callbackUrl: callbackUrl,
+                        md: md,
+                    };
+
+                    // Create IRIS session handler
+                    Object.defineProperty(iris, 'sessionHandler', {
+                        value: Helpers.createIrisSessionHandler({
+                            ajaxUrl: window.location.origin + '/everypay/iris/createsession',
+                            amount: amount,
+                            currency: billingData.currency || 'EUR',
+                            country: irisConfig.country,
+                            md: md
+                        }),
+                        enumerable: false,
+                        configurable: true,
+                        writable: true
+                    });
+
+                    otherPaymentMethods = { ...otherPaymentMethods, iris: iris };
+                }
+
                 payload.otherPaymentMethods = otherPaymentMethods;
             }
 

@@ -57,6 +57,57 @@ define([], function(){
             return cardDetails;
         },
 
+        createIrisSessionHandler: function (irisConfig) {
+            return async function (sessionPayload) {
+                var params = new URLSearchParams();
+
+                if (sessionPayload && sessionPayload.uuid) {
+                    params.append('uuid', sessionPayload.uuid);
+                }
+                if (sessionPayload && sessionPayload.md) {
+                    params.append('md', sessionPayload.md);
+                }
+
+                if (irisConfig.amount) {
+                    params.append('amount', irisConfig.amount);
+                }
+
+                if (irisConfig.currency) {
+                    params.append('currency', irisConfig.currency);
+                }
+
+                if (irisConfig.md) {
+                    params.append('md', irisConfig.md);
+                }
+
+                if (irisConfig.country) {
+                    params.append('country', irisConfig.country);
+                }
+
+                try {
+                    var response = await fetch(irisConfig.ajaxUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: params.toString()
+                    });
+
+                    var json = await response.json();
+
+                    if (!json || !json.success || !json.signature) {
+                        var message = (json && json.message) ? json.message : 'Invalid IRIS session response';
+                        throw new Error(message);
+                    }
+
+                    return json.signature;
+                } catch (error) {
+                    console.error('IRIS session creation failed', error);
+                    throw error;
+                }
+            };
+        }
 
     }
 });

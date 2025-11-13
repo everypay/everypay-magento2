@@ -61,7 +61,8 @@ final class ConfigProvider implements ConfigProviderInterface
             'emptyVault' => false,
             'max_installments' => null,
             'isGooglePayEnabled' => $this->epConfig->getIsGooglePayEnabled(),
-            'isApplePayEnabled' => $this->epConfig->getIsApplePayEnabled()
+            'isApplePayEnabled' => $this->epConfig->getIsApplePayEnabled(),
+            'isIrisEnabled' => $this->epConfig->getIsIrisEnabled()
         ];
 
         if ($this->epConfig->getIsGooglePayEnabled()) {
@@ -82,6 +83,13 @@ final class ConfigProvider implements ConfigProviderInterface
                 'merchantUrl' => $this->epConfig->getApplePayMerchantUrl(),
                 'allowedCardNetworks' => $this->epConfig->getApplePayAllowedCardNetworks(),
                 'buttonColor' => $this->epConfig->getApplePayButtonColor()
+            ];
+        }
+
+        if ($this->epConfig->getIsIrisEnabled()) {
+            $config['iris'] = [
+                'merchantName' => $this->epConfig->getIrisMerchantName(),
+                'country' => $this->epConfig->getIrisCountry()
             ];
         }
 

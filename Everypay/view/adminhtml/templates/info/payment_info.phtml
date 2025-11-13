@@ -1,0 +1,24 @@
+<?php
+/**
+ * Copyright © 2025 Everypay. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+
+/** @var \Everypay\Everypay\Block\Info $block */
+$payment = $block->getInfo();
+$paymentType = $payment->getAdditionalInformation('payment_type');
+$methodTitle = $payment->getAdditionalInformation('method_title');
+$irisToken = $payment->getAdditionalInformation('iris_token');
+?>
+
+<div class="payment-info-block">
+    <?php if ($paymentType === 'IRIS'): ?>
+        <p><strong><?= __('Payment Type') ?>:</strong> <?= __('IRIS Bank Payment') ?></p>
+        <p><strong><?= __('Payment Method') ?>:</strong> <?= $methodTitle ?: __('Everypay IRIS') ?></p>
+        <?php if ($irisToken): ?>
+            <p><strong><?= __('Transaction Token') ?>:</strong> <?= substr($irisToken, 0, 20) ?>...</p>
+        <?php endif; ?>
+    <?php else: ?>
+        <p><strong><?= __('Payment Method') ?>:</strong> <?= __('Everypay') ?></p>
+    <?php endif; ?>
+</div>
