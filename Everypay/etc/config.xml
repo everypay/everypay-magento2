@@ -41,7 +41,6 @@
                 <applepay_button_color>black</applepay_button_color>
                 <iris_feature>0</iris_feature>
                 <iris_merchant_name></iris_merchant_name>
-                <iris_country>GR</iris_country>
             </everypay>
         </payment>
     </default>

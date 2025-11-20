@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2025 Everypay. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<layout xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <referenceBlock name="order_payment_view">
+        <action method="setInfoTemplate">
+            <argument name="method" xsi:type="string">everypay</argument>
+            <argument name="template" xsi:type="string">Everypay_Everypay::info/payment_info.phtml</argument>
+        </action>
+    </referenceBlock>
+</layout>

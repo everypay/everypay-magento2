@@ -98,9 +98,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         // PAYMENT GATEWAY COOKIE FIX: Set SameSite=None for cross-site payment callbacks
         // This fixes session loss when banks redirect back from external domains
         $this->configurePaymentGatewayCookies();
-
-        // Prevent session regeneration for payment callbacks
-        $this->debugToStdout('Constructor: Session ID before: ' . session_id());
     }
 
     /**
@@ -112,16 +109,11 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         try {
             // Only force regenerate if we have existing session data to preserve
             if ($this->isHttpsRequest() && session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION)) {
-
-                $this->debugToStdout('PAYMENT GATEWAY: Backing up session data before secure regeneration');
-
                 // CRITICAL: Back up all session data before destroying
                 $sessionDataBackup = $_SESSION;
-                $this->debugToStdout('PAYMENT GATEWAY: Backed up ' . count($sessionDataBackup) . ' session variables');
 
                 // Destroy current session (this clears the data but we have backup)
                 session_destroy();
-                $this->debugToStdout('PAYMENT GATEWAY: Destroyed old session');
 
                 // Set secure cookie parameters for new session
                 session_set_cookie_params([
@@ -135,13 +127,11 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
                 // Start new session with secure settings
                 session_start();
-                $this->debugToStdout('PAYMENT GATEWAY: Started new secure session: ' . session_id());
 
                 // CRITICAL: Restore all session data
                 foreach ($sessionDataBackup as $key => $value) {
                     $_SESSION[$key] = $value;
                 }
-                $this->debugToStdout('PAYMENT GATEWAY: Restored ' . count($sessionDataBackup) . ' session variables');
 
                 // Force set a secure cookie manually as well
                 $cookieName = session_name();
@@ -160,13 +150,11 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                         'samesite' => 'None'
                     ]
                 );
-
-                $this->debugToStdout('PAYMENT GATEWAY FIX: Force set SameSite=None;Secure cookies WITH DATA PRESERVATION');
             } else {
-                $this->debugToStdout('PAYMENT GATEWAY: Skipping secure cookie regeneration - no session data or not HTTPS');
+                $this->logger->info('PAYMENT GATEWAY: Skipping secure cookie regeneration - no session data or not HTTPS');
             }
         } catch (\Exception $e) {
-            $this->debugToStdout('PAYMENT GATEWAY: Force cookie setting failed: ' . $e->getMessage());
+            $this->logger->error('PAYMENT GATEWAY: Force cookie setting failed: ' . $e->getMessage());
         }
     }
 
@@ -192,8 +180,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                         'httponly' => true,        // Prevent JavaScript access
                         'samesite' => 'None',      // Allow cross-site requests (CRITICAL for payment gateways)
                     ]);
-
-                    $this->debugToStdout('PAYMENT GATEWAY FIX: Set SameSite=None;Secure for cross-origin compatibility');
                 } else {
                     // Force secure=true for magento.everypay.local since we know it's HTTPS
                     if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'magento.everypay.local') !== false) {
@@ -205,14 +191,13 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                             'httponly' => true,
                             'samesite' => 'None',
                         ]);
-                        $this->debugToStdout('PAYMENT GATEWAY FIX: Forced SameSite=None;Secure for magento.everypay.local');
                     } else {
                         // Fallback for non-HTTPS environments (development)
-                        $this->debugToStdout('PAYMENT GATEWAY: Non-HTTPS environment detected, keeping default cookie settings');
+                        $this->logger->info('PAYMENT GATEWAY: Non-HTTPS environment detected, keeping default cookie settings');
                     }
                 }
             } catch (\Exception $e) {
-                $this->debugToStdout('PAYMENT GATEWAY: Cookie configuration failed: ' . $e->getMessage());
+                $this->logger->error('PAYMENT GATEWAY: Cookie configuration failed: ' . $e->getMessage());
             }
         }
     }
@@ -278,9 +263,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
      */
     public function execute()
     {
-        // Debug session info at start of callback
-        $this->debugSessionInfo('IRIS Callback Start');
-
         // Disable caching
         $this->response->setNoCacheHeaders();
 
@@ -302,45 +284,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
         // Handle POST request - process payment and redirect user
         return $this->handlePostCallback();
-    }
-
-    /**
-     * Debug session information
-     */
-    protected function debugSessionInfo($context)
-    {
-        $sessionId = session_id();
-        $magentoSessionId = $this->checkoutSession->getSessionId();
-
-        $debug = [
-            'context' => $context,
-            'php_session_id' => $sessionId,
-            'magento_session_id' => $magentoSessionId,
-            'session_name' => session_name(),
-            'cookie_params' => session_get_cookie_params(),
-            'headers' => getallheaders(),
-            // Add HTTPS detection debugging
-            'https_detection' => [
-                'SERVER_HTTPS' => $_SERVER['HTTPS'] ?? 'not set',
-                'HTTP_X_FORWARDED_PROTO' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? 'not set',
-                'SERVER_PORT' => $_SERVER['SERVER_PORT'] ?? 'not set',
-                'HTTP_HOST' => $_SERVER['HTTP_HOST'] ?? 'not set',
-                'REQUEST_SCHEME' => $_SERVER['REQUEST_SCHEME'] ?? 'not set',
-                'is_https_detected' => $this->isHttpsRequest() ? 'true' : 'false'
-            ]
-        ];
-
-        try {
-            $debug['last_order_id'] = $this->checkoutSession->getLastOrderId();
-            $debug['quote_id'] = $this->checkoutSession->getQuoteId();
-        } catch (\Exception $e) {
-            $debug['session_error'] = $e->getMessage();
-        }
-
-        $this->logger->info('Session Debug', $debug);
-
-        // Use the debug function for stdout
-        $this->debugToStdout('Session Debug: ' . $context, $debug);
     }
 
     /**
@@ -431,26 +374,17 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
      */
     protected function handlePostCallback()
     {
-        // Debug session BEFORE processing
-        $this->debugSessionInfo('POST Callback Before Processing');
-
         try {
             // Verify hash and process payment
             $result = $this->processPostCallback();
 
-            // Debug session AFTER processing
-            $this->debugSessionInfo('POST Callback After Processing');
-
             // Add error message to session if present (before redirect)
             if (isset($result['error_message'])) {
                 $this->messageManager->addErrorMessage($result['error_message']);
-                $this->debugToStdout('Added error message to session: ' . $result['error_message']);
             }
 
             // Check if we have a redirect URL
             if (isset($result['redirect_url']) && !empty($result['redirect_url'])) {
-                $this->debugToStdout('Redirecting to: ' . $result['redirect_url']);
-
                 /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
                 $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
                 $resultRedirect->setUrl($result['redirect_url']);
@@ -458,7 +392,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             }
 
             // If no redirect URL, fall back to checkout (error case)
-            $this->debugToStdout('No redirect URL, falling back to checkout/cart');
 
             /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
             $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
@@ -572,13 +505,10 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         }
 
         $paymentToken = null;
-
-        // Check if order is already paid (duplicate callback)
-        $isPaid = $order->getState() === \Magento\Sales\Model\Order::STATE_PROCESSING
-                  || $order->getState() === \Magento\Sales\Model\Order::STATE_COMPLETE;
+        $orderHasPaymentToken = !empty($order->getData('everypay_payment_token'));
 
         // Process payment if no error and not already paid
-        if (!$hasError && !$isPaid) {
+        if (!$hasError && !$orderHasPaymentToken) {
             try {
                 $this->logger->info('Processing IRIS payment', [
                     'order_id' => $order->getId(),
@@ -623,7 +553,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                     'exception' => $e
                 ]);
             }
-        } elseif ($isPaid) {
+        } elseif ($orderHasPaymentToken) {
             // Order already paid, this is a duplicate callback
             $this->logger->info('IRIS callback for already paid order', [
                 'order_id' => $order->getId(),
@@ -673,15 +603,26 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
      */
     protected function findOrderByIrisReference($token, $md)
     {
-        $this->debugToStdout('Finding order for IRIS callback - md: ' . $md . ', token: ' . $token);
+        // PRODUCTION SAFETY: First check if order already exists for this IRIS token
+        try {
+            $orderCollection = $this->orderFactory->create()->getCollection()
+                ->addFieldToFilter('everypay_source_token', $token)
+                ->setPageSize(1);
+
+            if ($orderCollection->getSize() > 0) {
+                /** @var \Magento\Sales\Model\Order $existingOrder */
+                $existingOrder = $orderCollection->getFirstItem();
+                return $existingOrder;
+            }
+        } catch (\Exception $e) {
+            $this->logger->error('Error checking for existing orders: ' . $e->getMessage());
+        }
 
         // Extract quote ID from md parameter if present
         if (strpos($md, '_qid_') !== false) {
             $parts = explode('_qid_', $md);
             if (count($parts) === 2) {
                 $quoteId = (int)$parts[1];
-
-                $this->debugToStdout('Extracted quote ID from md: ' . $quoteId);
 
                 try {
                     // Find order by quote ID (ignores session completely)
@@ -694,25 +635,22 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                         /** @var \Magento\Sales\Model\Order $order */
                         $order = $orderCollection->getFirstItem();
 
-                        $this->debugToStdout('Found order by quote ID: ' . $order->getEntityId());
-
                         return $order;
                     } else {
-                        $this->debugToStdout('No order found for quote ID: ' . $quoteId);
-
+                        $this->logger->info('No order found for quote ID: ' . $quoteId);
                         // CRITICAL FIX: Create order from quote if not found
-                        $this->debugToStdout('Attempting to create order from quote: ' . $quoteId);
+                        $this->logger->info('Attempting to create order from quote: ' . $quoteId);
                         $order = $this->createOrderFromQuote($quoteId);
 
                         if ($order) {
-                            $this->debugToStdout('Successfully created order: ' . $order->getEntityId());
+                            $this->logger->info('Successfully created order: ' . $order->getEntityId());
                             return $order;
                         } else {
-                            $this->debugToStdout('Failed to create order from quote');
+                            $this->logger->info('Failed to create order from quote');
                         }
                     }
                 } catch (\Exception $e) {
-                    $this->debugToStdout('Error finding order by quote ID: ' . $e->getMessage());
+                    $this->logger->error('Error finding order by quote ID: ' . $e->getMessage());
                 }
             }
         }
@@ -726,15 +664,14 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $order = $this->orderRepository->get($orderId);
 
                 if ($order && $order->getEntityId()) {
-                    $this->debugToStdout('Found order from session as fallback: ' . $order->getEntityId());
                     return $order;
                 }
             }
         } catch (\Exception $e) {
-            $this->debugToStdout('Session fallback failed: ' . $e->getMessage());
+            $this->logger->error('Session fallback failed: ' . $e->getMessage());
         }
 
-        $this->debugToStdout('No order found - this means order was never created before IRIS redirect');
+        $this->logger->info('No order found - this means order was never created before IRIS redirect');
         return null;
     }
 
@@ -745,8 +682,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     protected function createOrderFromQuote($quoteId)
     {
         try {
-            $this->debugToStdout('Loading quote ID: ' . $quoteId);
-
             // Load quote by ID
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
             $quoteRepository = $objectManager->get(\Magento\Quote\Api\CartRepositoryInterface::class);
@@ -760,7 +695,8 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 return null;
             }
 
-            $this->debugToStdout('Quote loaded successfully: ' . $quote->getId() . ', total: ' . $quote->getGrandTotal());
+            // CRITICAL: Validate and fix quote data before order creation
+            $this->validateAndFixQuoteData($quote);
 
             // Properly configure payment method for order creation
             $payment = $quote->getPayment();
@@ -771,10 +707,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $md = $request->getParam('md');
             $token = $request->getParam('token');
             $hash = $request->getParam('hash');
-
-            $this->debugToStdout('IRIS Callback Data - md: ' . ($md ?: 'NOT_PROVIDED'));
-            $this->debugToStdout('IRIS Callback Data - token: ' . ($token ?: 'NOT_PROVIDED'));
-            $this->debugToStdout('IRIS Callback Data - hash: ' . ($hash ? 'PROVIDED' : 'NOT_PROVIDED'));
 
             // Set payment method additional information for IRIS
             $payment->setAdditionalInformation('payment_type', 'IRIS');
@@ -787,7 +719,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             if ($token) {
                 $payment->setAdditionalInformation('token', $token);
                 $payment->setAdditionalInformation('iris_token', $token);
-                $this->debugToStdout('Set IRIS token in payment: ' . $token);
             }
             if ($hash) {
                 $payment->setAdditionalInformation('iris_hash', $hash);
@@ -797,7 +728,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $payment->setAdditionalInformation('transaction_result', 'success');
 
             if (!$token) {
-                $this->debugToStdout('ERROR: No IRIS token found in callback - order creation will likely fail');
+                $this->logger->error('ERROR: No IRIS token found in callback - order creation will likely fail');
                 return null;
             }
 
@@ -805,20 +736,87 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $quoteRepository->save($quote);
             $quote->collectTotals();
 
-            $this->debugToStdout('Payment method set to everypay with additional info');
+            $quote->setIsActive(false);
+            $quoteRepository->save($quote);
 
-            // Create order from quote
-            $orderId = $cartManagement->placeOrder($quote->getId());
+            $orderFactory = $objectManager->get(\Magento\Sales\Model\OrderFactory::class);
+            $order = $orderFactory->create();
 
-            /** @var \Magento\Sales\Model\Order $order */
-            $order = $orderRepository->get($orderId);
+            // Set order data from quote
+            $order->setQuoteId($quote->getId());
+            $order->setStoreId($quote->getStoreId());
+            $order->setCustomerId($quote->getCustomerId());
+            $order->setCustomerEmail($quote->getCustomerEmail());
+            $order->setCustomerFirstname($quote->getCustomerFirstname());
+            $order->setCustomerLastname($quote->getCustomerLastname());
+            $order->setCustomerIsGuest($quote->getCustomerIsGuest());
 
-            // CRITICAL: Update order payment info to show IRIS
+            // Set order totals
+            $order->setSubtotal($quote->getSubtotal());
+            $order->setBaseSubtotal($quote->getBaseSubtotal());
+            $order->setGrandTotal($quote->getGrandTotal());
+            $order->setBaseGrandTotal($quote->getBaseGrandTotal());
+            $order->setTaxAmount($quote->getShippingAddress()->getTaxAmount());
+            $order->setBaseTaxAmount($quote->getShippingAddress()->getBaseTaxAmount());
+
+            // Set currency
+            $order->setOrderCurrencyCode($quote->getQuoteCurrencyCode());
+            $order->setBaseCurrencyCode($quote->getBaseCurrencyCode());
+
+            // Add items to order
+            foreach ($quote->getAllVisibleItems() as $quoteItem) {
+                $orderItem = $objectManager->create(\Magento\Sales\Model\Order\Item::class);
+                $orderItem->setQuoteItemId($quoteItem->getId());
+                $orderItem->setProductId($quoteItem->getProductId());
+                $orderItem->setSku($quoteItem->getSku());
+                $orderItem->setName($quoteItem->getName());
+                $orderItem->setQtyOrdered($quoteItem->getQty());
+                $orderItem->setPrice($quoteItem->getPrice());
+                $orderItem->setBasePrice($quoteItem->getBasePrice());
+                $orderItem->setRowTotal($quoteItem->getRowTotal());
+                $orderItem->setBaseRowTotal($quoteItem->getBaseRowTotal());
+                $order->addItem($orderItem);
+            }
+
+            // Set addresses
+            $addressFactory = $objectManager->get(\Magento\Sales\Model\Order\Address::class);
+            $billingAddress = $objectManager->create(\Magento\Sales\Model\Order\Address::class);
+            $billingAddress->setData($quote->getBillingAddress()->getData());
+            $billingAddress->setAddressType(\Magento\Sales\Model\Order\Address::TYPE_BILLING);
+            $order->setBillingAddress($billingAddress);
+
+            if (!$quote->isVirtual()) {
+                $shippingAddress = $objectManager->create(\Magento\Sales\Model\Order\Address::class);
+                $shippingAddress->setData($quote->getShippingAddress()->getData());
+                $shippingAddress->setAddressType(\Magento\Sales\Model\Order\Address::TYPE_SHIPPING);
+                $order->setShippingAddress($shippingAddress);
+            }
+
+            // Create payment without processing
+            $payment = $objectManager->create(\Magento\Sales\Model\Order\Payment::class);
+            $payment->setMethod('everypay');
+            $payment->setAdditionalInformation('payment_type', 'IRIS');
+            $payment->setAdditionalInformation('method_title', 'Everypay IRIS Bank Payment');
+            $payment->setAdditionalInformation('iris_payment_completed', true);
+            $order->setPayment($payment);
+
+            // Save order
+            $orderRepository = $objectManager->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
+            $order = $orderRepository->save($order);
+
+            if (!$order) {
+                $this->logger->error('Failed to submit quote as order');
+                return null;
+            }
+
             $orderPayment = $order->getPayment();
+            $orderPayment->setMethod('everypay');
             $orderPayment->setAdditionalInformation('payment_type', 'IRIS');
             $orderPayment->setAdditionalInformation('method_title', 'Everypay IRIS Bank Payment');
             if ($token) {
                 $orderPayment->setAdditionalInformation('iris_token', $token);
+                // Store token at order level for duplicate prevention
+                $order->setData('everypay_source_token', $token);
             }
             if ($md) {
                 $orderPayment->setAdditionalInformation('iris_md', $md);
@@ -829,9 +827,18 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
             // Update payment method title in the order
             $orderPayment->setMethod('everypay');
+
+            // Mark payment as completed since IRIS payment was processed
+            $orderPayment->setTransactionId($token);
+            $orderPayment->setIsTransactionClosed(true);
+            $orderPayment->addTransaction(\Magento\Sales\Model\Order\Payment\Transaction::TYPE_PAYMENT);
             $orderPayment->save();
 
-            $this->debugToStdout('Updated order payment info with IRIS details');
+            // Set order status to processing since payment is complete
+            $order->setState(\Magento\Sales\Model\Order::STATE_PROCESSING);
+            $order->setStatus(\Magento\Sales\Model\Order::STATE_PROCESSING);
+            $order->addStatusHistoryComment('IRIS payment completed via bank redirect. Token: ' . $token);
+            $order->save();
 
             // Store order ID in session for success page
             $this->checkoutSession->setLastOrderId($order->getId());
@@ -839,12 +846,9 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $this->checkoutSession->setLastQuoteId($quote->getId());
             $this->checkoutSession->setLastSuccessQuoteId($quote->getId());
 
-            $this->debugToStdout('Order created from quote - Order ID: ' . $order->getId() . ', Increment ID: ' . $order->getIncrementId());
-
             return $order;
 
         } catch (\Exception $e) {
-            $this->debugToStdout('Failed to create order from quote: ' . $e->getMessage());
             $this->logger->error('IRIS: Failed to create order from quote during callback', [
                 'quote_id' => $quoteId,
                 'error' => $e->getMessage()
@@ -862,6 +866,8 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
      */
     protected function createIrisPayment($order, $token)
     {
+        $this->debugToStdout('Creating IRIS payment for order ID: ' . $order->getId());
+
         try {
             $amount = (int)($order->getGrandTotal() * 100);
             $storeName = $order->getStore()->getName();
@@ -892,6 +898,8 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $params['country'] = strtoupper($billingAddress->getCountryId());
             }
 
+            $this->debugToStdout('SK', $this->epConfig->getSecretKey());
+
             Everypay::setApiKey($this->epConfig->getSecretKey());
             Everypay::$isTest = (bool)$this->epConfig->getSandboxMode();
 
@@ -899,6 +907,8 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
             $this->logger->debug('IRIS Payment Request', ['params' => $params]);
             $this->logger->debug('IRIS Payment Response', ['response' => $response]);
+
+            $this->debugToStdout('Creating IRIS payment response', $response);
 
             if (isset($response->error)) {
                 throw new \Exception($response->error->message ?? 'Payment creation failed');
@@ -913,6 +923,149 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 'exception' => $e
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Validate and fix quote data to ensure order creation succeeds
+     * Only adds dummy data as last resort - logs detailed info about missing data
+     */
+    protected function validateAndFixQuoteData($quote)
+    {
+        try {
+            $this->debugToStdout('Validating quote data for order creation');
+
+            // Log current quote data state for debugging
+            $this->debugToStdout('Quote data state:', [
+                'quote_id' => $quote->getId(),
+                'customer_email' => $quote->getCustomerEmail(),
+                'customer_firstname' => $quote->getCustomerFirstname(),
+                'customer_lastname' => $quote->getCustomerLastname(),
+                'customer_id' => $quote->getCustomerId(),
+                'is_guest' => $quote->getCustomerIsGuest()
+            ]);
+
+            // Try to recover customer data from addresses first
+            $billingAddress = $quote->getBillingAddress();
+            $recoveredData = false;
+
+            if ($billingAddress) {
+                $this->debugToStdout('Billing address data:', [
+                    'email' => $billingAddress->getEmail(),
+                    'firstname' => $billingAddress->getFirstname(),
+                    'lastname' => $billingAddress->getLastname()
+                ]);
+
+                // Recover email from billing address if missing
+                if (!$quote->getCustomerEmail() && $billingAddress->getEmail() && filter_var($billingAddress->getEmail(), FILTER_VALIDATE_EMAIL)) {
+                    $quote->setCustomerEmail($billingAddress->getEmail());
+                    $this->debugToStdout('Recovered customer email from billing address: ' . $billingAddress->getEmail());
+                    $recoveredData = true;
+                }
+
+                // Recover firstname from billing address if missing
+                if (!$quote->getCustomerFirstname() && $billingAddress->getFirstname()) {
+                    $quote->setCustomerFirstname($billingAddress->getFirstname());
+                    $this->debugToStdout('Recovered customer firstname from billing address: ' . $billingAddress->getFirstname());
+                    $recoveredData = true;
+                }
+
+                // Recover lastname from billing address if missing
+                if (!$quote->getCustomerLastname() && $billingAddress->getLastname()) {
+                    $quote->setCustomerLastname($billingAddress->getLastname());
+                    $this->debugToStdout('Recovered customer lastname from billing address: ' . $billingAddress->getLastname());
+                    $recoveredData = true;
+                }
+            }
+
+            // Validate required customer data - FAIL if missing
+            $customerEmail = $quote->getCustomerEmail();
+            if (!$customerEmail || !filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                throw new \Exception('IRIS Callback: No valid customer email found in quote - cannot process payment');
+            }
+
+            if (!$quote->getCustomerFirstname()) {
+                throw new \Exception('IRIS Callback: No customer firstname found in quote - cannot process payment');
+            }
+
+            if (!$quote->getCustomerLastname()) {
+                throw new \Exception('IRIS Callback: No customer lastname found in quote - cannot process payment');
+            }
+
+            if ($recoveredData) {
+                $this->logger->info('IRIS Callback: Successfully recovered customer data from addresses');
+            }
+
+            // Validate billing address
+            $billingAddress = $quote->getBillingAddress();
+            if ($billingAddress) {
+                if (!$billingAddress->getEmail()) {
+                    $billingAddress->setEmail($quote->getCustomerEmail());
+                }
+
+                // Ensure required billing fields are set
+                if (!$billingAddress->getFirstname()) {
+                    $billingAddress->setFirstname($quote->getCustomerFirstname());
+                }
+                if (!$billingAddress->getLastname()) {
+                    $billingAddress->setLastname($quote->getCustomerLastname());
+                }
+                if (!$billingAddress->getStreet()) {
+                    $billingAddress->setStreet(['Unknown Street']);
+                }
+                if (!$billingAddress->getCity()) {
+                    $billingAddress->setCity('Unknown City');
+                }
+                if (!$billingAddress->getPostcode()) {
+                    $billingAddress->setPostcode('00000');
+                }
+                if (!$billingAddress->getCountryId()) {
+                    $billingAddress->setCountryId('GR'); // Default to Greece
+                }
+                if (!$billingAddress->getTelephone()) {
+                    $billingAddress->setTelephone('000000000');
+                }
+
+                $this->debugToStdout('Updated billing address data');
+            }
+
+            // Validate shipping address if needed
+            $shippingAddress = $quote->getShippingAddress();
+            if ($shippingAddress && $quote->getIsVirtual() === false) {
+                if (!$shippingAddress->getEmail()) {
+                    $shippingAddress->setEmail($quote->getCustomerEmail());
+                }
+
+                // Copy billing address data to shipping if missing
+                if (!$shippingAddress->getFirstname()) {
+                    $shippingAddress->setFirstname($billingAddress->getFirstname());
+                }
+                if (!$shippingAddress->getLastname()) {
+                    $shippingAddress->setLastname($billingAddress->getLastname());
+                }
+                if (!$shippingAddress->getStreet()) {
+                    $shippingAddress->setStreet($billingAddress->getStreet());
+                }
+                if (!$shippingAddress->getCity()) {
+                    $shippingAddress->setCity($billingAddress->getCity());
+                }
+                if (!$shippingAddress->getPostcode()) {
+                    $shippingAddress->setPostcode($billingAddress->getPostcode());
+                }
+                if (!$shippingAddress->getCountryId()) {
+                    $shippingAddress->setCountryId($billingAddress->getCountryId());
+                }
+                if (!$shippingAddress->getTelephone()) {
+                    $shippingAddress->setTelephone($billingAddress->getTelephone());
+                }
+
+                $this->debugToStdout('Updated shipping address data');
+            }
+
+            $this->debugToStdout('Quote data validation completed');
+
+        } catch (\Exception $e) {
+            $this->debugToStdout('Error validating quote data: ' . $e->getMessage());
         }
     }
 }

@@ -176,8 +176,7 @@ class EverypayConfig
 
     public function getIrisCountry()
     {
-        return $this->scopeConfig->getValue(
-            'payment/everypay/iris_country'
-        );
+        // Only Greece is supported for IRIS
+        return 'GR';
     }
 }

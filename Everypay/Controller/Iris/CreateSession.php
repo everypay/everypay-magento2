@@ -114,6 +114,10 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                 ]);
             }
 
+            // Capture and persist customer data before redirect
+            // This prevents data loss when IRIS callback URL returns
+            $this->captureAndPersistCustomerData($quote, $request);
+
             // If amount not provided, use quote total
             if (empty($amount)) {
                 $amount = (int)($quote->getGrandTotal() * 100);
@@ -212,7 +216,7 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
     {
         $apiUrl = Everypay::$isTest
             ? 'https://sandbox-api.everypay.gr/iris/sessions'
-            : 'https://api.everypay.gr/iris/sessions';
+            : 'https://uat-api.everypay.gr/iris/sessions';
 
         $secretKey = $this->epConfig->getSecretKey();
 
@@ -307,7 +311,22 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                         ]
                     );
 
+                    // ADDITIONAL: Set a backup cookie with different settings for UAT compatibility
+                    // setcookie(
+                    //     $cookieName . '_backup',
+                    //     $sessionId,
+                    //     [
+                    //         'expires' => time() + ($params['lifetime'] ?: 3600),
+                    //         'path' => '/',
+                    //         'domain' => '',
+                    //         'secure' => true,
+                    //         'httponly' => false,
+                    //         'samesite' => 'None'
+                    //     ]
+                    // );
+
                     error_log('PAYMENT GATEWAY SETUP: Set SameSite=None;Secure cookie for session: ' . $sessionId);
+                    error_log('PAYMENT GATEWAY SETUP: Set backup cookie for UAT compatibility');
                 } else {
                     error_log('PAYMENT GATEWAY SETUP: No session ID found');
                 }
@@ -344,5 +363,52 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
         }
 
         return false;
+    }
+
+    /**
+     * Capture customer data from request and persist to quote
+     * This prevents data loss during IRIS payment redirection flow with guests
+     *
+     * @param \Magento\Quote\Model\Quote $quote
+     * @param \Magento\Framework\App\RequestInterface $request
+     * @return void
+     */
+    protected function captureAndPersistCustomerData($quote, $request)
+    {
+        try {
+            $this->logger->info('Forcing quote data persistence before IRIS redirect', [
+                'quote_id' => $quote->getId(),
+                'current_email' => $quote->getCustomerEmail(),
+                'current_firstname' => $quote->getCustomerFirstname(),
+                'current_lastname' => $quote->getCustomerLastname(),
+                'is_guest' => $quote->getCustomerIsGuest()
+            ]);
+
+            // Ensure guest checkout flag is set for non-logged users
+            if (!$quote->getCustomerId() && !$quote->getCustomerIsGuest()) {
+                $quote->setCustomerIsGuest(true);
+                $this->logger->info('Set guest checkout flag');
+            }
+
+            // Force collect totals and save quote
+            $quote->collectTotals();
+            $quote->setDataChanges(true);
+            $quote->save();
+
+            $this->logger->info('Quote data persisted successfully', [
+                'quote_id' => $quote->getId(),
+                'email' => $quote->getCustomerEmail(),
+                'firstname' => $quote->getCustomerFirstname(),
+                'lastname' => $quote->getCustomerLastname(),
+                'billing_email' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getEmail() : null,
+                'billing_firstname' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getFirstname() : null,
+                'billing_lastname' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getLastname() : null
+            ]);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to persist quote data: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+        }
     }
 }

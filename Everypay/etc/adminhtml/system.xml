@@ -170,21 +170,11 @@
                 <!-- IRIS settings begin -->
                 <field id="iris_feature" translate="label" type="select" sortOrder="200" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>IRIS</label>
-                    <comment><![CDATA[⚠️ Enable IRIS bank payment method]]></comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
                 <field id="iris_merchant_name" translate="label" type="text" sortOrder="201" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>IRIS Merchant Name</label>
                     <comment><![CDATA[The name to be displayed in the IRIS payment flow]]></comment>
-                    <validate>required-entry</validate>
-                    <depends>
-                        <field id="iris_feature">1</field>
-                    </depends>
-                </field>
-                <field id="iris_country" translate="label" type="select" sortOrder="202" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>IRIS Country</label>
-                    <comment><![CDATA[Country for IRIS payments]]></comment>
-                    <source_model>Magento\Directory\Model\Config\Source\Country</source_model>
                     <validate>required-entry</validate>
                     <depends>
                         <field id="iris_feature">1</field>
