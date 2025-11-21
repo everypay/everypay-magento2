@@ -287,54 +287,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     }
 
     /**
-     * Debug to stdout
-     */
-    protected function debugToStdout($message, ...$params)
-    {
-        static $stdout;
-
-        if ($stdout === null) {
-            $stdout = fopen('php://stdout', 'w');
-        }
-
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
-        $caller = $trace[1] ?? [];
-
-        $line = $caller['line'] ?? 'n/a';
-        $class = $caller['class'] ?? '';
-        $type = $caller['type'] ?? '';
-        $function = $caller['function'] ?? '';
-
-        $yellow = "\033[33m";
-        $reset = "\033[0m";
-
-        $location = sprintf(
-            "[{$yellow}DEBUG@%s%s%s():%s{$reset}] ",
-            $class,
-            $type,
-            $function,
-            $line
-        );
-
-        if (count($params) === 1 && is_array($params[0])) {
-            $params = $params[0];
-        } else if (count($params) === 0 && is_array($message)) {
-            $params = [$message];
-            $message = null;
-        }
-
-        if ($message === null) {
-            $message = '';
-        }
-
-        fwrite($stdout, $location . $message . PHP_EOL);
-
-        foreach ($params as $param) {
-            fwrite($stdout, var_export($param, true) . PHP_EOL);
-        }
-    }
-
-    /**
      * Handle GET callback (redirect after IRIS flow - user returns from bank)
      *
      * @return \Magento\Framework\Controller\ResultInterface
@@ -646,7 +598,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                             $this->logger->info('Successfully created order: ' . $order->getEntityId());
                             return $order;
                         } else {
-                            $this->logger->info('Failed to create order from quote');
+                            $this->logger->error('Failed to create order from quote');
                         }
                     }
                 } catch (\Exception $e) {
@@ -691,7 +643,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $quote = $quoteRepository->get($quoteId);
 
             if (!$quote || !$quote->getId()) {
-                $this->debugToStdout('Quote not found for ID: ' . $quoteId);
+                $this->logger->error('Quote not found for ID: ' . $quoteId);
                 return null;
             }
 
@@ -881,8 +833,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
      */
     protected function createIrisPayment($order, $token)
     {
-        $this->debugToStdout('Creating IRIS payment for order ID: ' . $order->getId());
-
         try {
             $amount = (int)($order->getGrandTotal() * 100);
             $storeName = $order->getStore()->getName();
@@ -913,8 +863,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $params['country'] = strtoupper($billingAddress->getCountryId());
             }
 
-            $this->debugToStdout('SK', $this->epConfig->getSecretKey());
-
             Everypay::setApiKey($this->epConfig->getSecretKey());
             Everypay::$isTest = (bool)$this->epConfig->getSandboxMode();
 
@@ -922,8 +870,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
             $this->logger->debug('IRIS Payment Request', ['params' => $params]);
             $this->logger->debug('IRIS Payment Response', ['response' => $response]);
-
-            $this->debugToStdout('Creating IRIS payment response', $response);
 
             if (isset($response->error)) {
                 throw new \Exception($response->error->message ?? 'Payment creation failed');
@@ -948,47 +894,26 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     protected function validateAndFixQuoteData($quote)
     {
         try {
-            $this->debugToStdout('Validating quote data for order creation');
-
-            // Log current quote data state for debugging
-            $this->debugToStdout('Quote data state:', [
-                'quote_id' => $quote->getId(),
-                'customer_email' => $quote->getCustomerEmail(),
-                'customer_firstname' => $quote->getCustomerFirstname(),
-                'customer_lastname' => $quote->getCustomerLastname(),
-                'customer_id' => $quote->getCustomerId(),
-                'is_guest' => $quote->getCustomerIsGuest()
-            ]);
-
             // Try to recover customer data from addresses first
             $billingAddress = $quote->getBillingAddress();
             $recoveredData = false;
 
             if ($billingAddress) {
-                $this->debugToStdout('Billing address data:', [
-                    'email' => $billingAddress->getEmail(),
-                    'firstname' => $billingAddress->getFirstname(),
-                    'lastname' => $billingAddress->getLastname()
-                ]);
-
                 // Recover email from billing address if missing
                 if (!$quote->getCustomerEmail() && $billingAddress->getEmail() && filter_var($billingAddress->getEmail(), FILTER_VALIDATE_EMAIL)) {
                     $quote->setCustomerEmail($billingAddress->getEmail());
-                    $this->debugToStdout('Recovered customer email from billing address: ' . $billingAddress->getEmail());
                     $recoveredData = true;
                 }
 
                 // Recover firstname from billing address if missing
                 if (!$quote->getCustomerFirstname() && $billingAddress->getFirstname()) {
                     $quote->setCustomerFirstname($billingAddress->getFirstname());
-                    $this->debugToStdout('Recovered customer firstname from billing address: ' . $billingAddress->getFirstname());
                     $recoveredData = true;
                 }
 
                 // Recover lastname from billing address if missing
                 if (!$quote->getCustomerLastname() && $billingAddress->getLastname()) {
                     $quote->setCustomerLastname($billingAddress->getLastname());
-                    $this->debugToStdout('Recovered customer lastname from billing address: ' . $billingAddress->getLastname());
                     $recoveredData = true;
                 }
             }
@@ -1022,26 +947,10 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 if (!$billingAddress->getFirstname()) {
                     $billingAddress->setFirstname($quote->getCustomerFirstname());
                 }
+
                 if (!$billingAddress->getLastname()) {
                     $billingAddress->setLastname($quote->getCustomerLastname());
                 }
-                if (!$billingAddress->getStreet()) {
-                    $billingAddress->setStreet(['Unknown Street']);
-                }
-                if (!$billingAddress->getCity()) {
-                    $billingAddress->setCity('Unknown City');
-                }
-                if (!$billingAddress->getPostcode()) {
-                    $billingAddress->setPostcode('00000');
-                }
-                if (!$billingAddress->getCountryId()) {
-                    $billingAddress->setCountryId('GR'); // Default to Greece
-                }
-                if (!$billingAddress->getTelephone()) {
-                    $billingAddress->setTelephone('000000000');
-                }
-
-                $this->debugToStdout('Updated billing address data');
             }
 
             // Validate shipping address if needed
@@ -1073,14 +982,9 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 if (!$shippingAddress->getTelephone()) {
                     $shippingAddress->setTelephone($billingAddress->getTelephone());
                 }
-
-                $this->debugToStdout('Updated shipping address data');
             }
-
-            $this->debugToStdout('Quote data validation completed');
-
         } catch (\Exception $e) {
-            $this->debugToStdout('Error validating quote data: ' . $e->getMessage());
+            $this->logger->error('Error validating quote data: ' . $e->getMessage());
         }
     }
 }
