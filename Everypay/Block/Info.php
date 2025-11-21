@@ -48,7 +48,7 @@ class Info extends ConfigurableInfo
             case 'method_title':
                 return $value ?: 'Everypay';
             case 'iris_token':
-                return $value ? substr($value, 0, 20) . '...' : '';
+                return $value;
         }
         return parent::getValueView($field, $value);
     }

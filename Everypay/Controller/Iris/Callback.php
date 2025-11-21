@@ -756,8 +756,23 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $order->setBaseSubtotal($quote->getBaseSubtotal());
             $order->setGrandTotal($quote->getGrandTotal());
             $order->setBaseGrandTotal($quote->getBaseGrandTotal());
+
+            // Set shipping amounts from quote
+            $order->setShippingAmount($quote->getShippingAddress()->getShippingAmount());
+            $order->setBaseShippingAmount($quote->getShippingAddress()->getBaseShippingAmount());
+            $order->setShippingDescription($quote->getShippingAddress()->getShippingDescription());
+            $order->setShippingMethod($quote->getShippingAddress()->getShippingMethod());
+
+            // Set tax amounts
             $order->setTaxAmount($quote->getShippingAddress()->getTaxAmount());
             $order->setBaseTaxAmount($quote->getShippingAddress()->getBaseTaxAmount());
+            $order->setShippingTaxAmount($quote->getShippingAddress()->getShippingTaxAmount());
+            $order->setBaseShippingTaxAmount($quote->getShippingAddress()->getBaseShippingTaxAmount());
+
+            // Set discount amounts if any
+            $order->setDiscountAmount($quote->getShippingAddress()->getDiscountAmount());
+            $order->setBaseDiscountAmount($quote->getShippingAddress()->getBaseDiscountAmount());
+            $order->setDiscountDescription($quote->getShippingAddress()->getDiscountDescription());
 
             // Set currency
             $order->setOrderCurrencyCode($quote->getQuoteCurrencyCode());
