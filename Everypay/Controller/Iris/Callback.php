@@ -448,19 +448,23 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             ];
         }
 
-        // Store IRIS metadata
-        if ($md && !$order->getData('everypay_iris_md')) {
-            $order->setData('everypay_iris_md', $md);
+        // Store IRIS metadata in payment additional information instead of custom order fields
+        $payment = $order->getPayment();
+        if ($md && !$payment->getAdditionalInformation('iris_md')) {
+            $payment->setAdditionalInformation('iris_md', $md);
         }
-        if ($token && !$order->getData('everypay_source_token')) {
-            $order->setData('everypay_source_token', $token);
+        if ($token && !$payment->getAdditionalInformation('iris_token')) {
+            $payment->setAdditionalInformation('iris_token', $token);
         }
 
         $paymentToken = null;
-        $orderHasPaymentToken = !empty($order->getData('everypay_payment_token'));
+        // Check if this IRIS source token was already processed
+        $existingIrisToken = $order->getPayment()->getAdditionalInformation('iris_token');
+        $orderAlreadyPaid = ($order->getState() === 'processing' || $order->getState() === 'complete') &&
+                           $existingIrisToken === $token;
 
         // Process payment if no error and not already paid
-        if (!$hasError && !$orderHasPaymentToken) {
+        if (!$hasError && !$orderAlreadyPaid) {
             try {
                 $this->logger->info('Processing IRIS payment', [
                     'order_id' => $order->getId(),
@@ -479,13 +483,10 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                     'payment_token' => $paymentToken
                 ]);
 
-                // Update order with payment info
-                $order->setData('everypay_payment_token', $paymentToken);
-                $order->setData('everypay_payment_method', 'iris');
-
-                // Complete payment
+                // Update order with payment info using standard Magento fields
                 $payment = $order->getPayment();
                 $payment->setTransactionId($paymentToken);
+                $payment->setLastTransId($paymentToken);
                 $payment->setIsTransactionClosed(false);
                 $payment->registerCaptureNotification($order->getGrandTotal());
 
@@ -505,7 +506,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                     'exception' => $e
                 ]);
             }
-        } elseif ($orderHasPaymentToken) {
+        } elseif ($orderAlreadyPaid) {
             // Order already paid, this is a duplicate callback
             $this->logger->info('IRIS callback for already paid order', [
                 'order_id' => $order->getId(),
@@ -558,7 +559,12 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         // PRODUCTION SAFETY: First check if order already exists for this IRIS token
         try {
             $orderCollection = $this->orderFactory->create()->getCollection()
-                ->addFieldToFilter('everypay_source_token', $token)
+                ->join(
+                    ['payment' => 'sales_order_payment'],
+                    'main_table.entity_id = payment.parent_id',
+                    []
+                )
+                ->addFieldToFilter('payment.additional_information', ['like' => '%"iris_token":"' . $token . '"%'])
                 ->setPageSize(1);
 
             if ($orderCollection->getSize() > 0) {
@@ -567,7 +573,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 return $existingOrder;
             }
         } catch (\Exception $e) {
-            $this->logger->error('Error checking for existing orders: ' . $e->getMessage());
+            $this->logger->error('Error checking for existing orders by IRIS token: ' . $e->getMessage());
         }
 
         // Extract quote ID from md parameter if present
@@ -629,7 +635,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
     /**
      * Create order from quote ID for IRIS callback
-     * Emergency order creation when order wasn't created before redirect
+     * Uses hybrid approach: Magento's services where possible, manual creation for IRIS-specific needs
      */
     protected function createOrderFromQuote($quoteId)
     {
@@ -684,10 +690,38 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 return null;
             }
 
-            // Save quote with payment method
-            $quoteRepository->save($quote);
-            $quote->collectTotals();
+            // First try CartManagement for proper Magento order creation
+            try {
+                // Prepare quote for CartManagement
+                $quote->setIsActive(true); // CartManagement needs active quote
+                $quote->collectTotals();
+                $quoteRepository->save($quote);
 
+                // Try Magento's proper order creation using ObjectManager
+                $cartManagement = $objectManager->get(\Magento\Quote\Api\CartManagementInterface::class);
+                $orderId = $cartManagement->placeOrder($quoteId);
+
+                if ($orderId) {
+                    $order = $orderRepository->get($orderId);
+                    $this->logger->info('Order successfully created via CartManagement', [
+                        'order_id' => $order->getId(),
+                        'state' => $order->getState()
+                    ]);
+
+                    // Update with IRIS-specific data
+                    $this->updateOrderWithIrisData($order, $token, $md, $hash);
+                    return $order;
+                }
+            } catch (\Exception $e) {
+                $this->logger->warning('CartManagement failed, falling back to manual creation: ' . $e->getMessage());
+                // Continue to manual creation below
+            }
+
+            // Fallback to manual creation for IRIS-specific scenarios
+            $this->logger->info('Using manual order creation for IRIS callback');
+
+            // Save quote with payment method
+            $quote->collectTotals();
             $quote->setIsActive(false);
             $quoteRepository->save($quote);
 
@@ -807,11 +841,16 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $order->addStatusHistoryComment('IRIS payment completed via bank redirect. Token: ' . $token);
             $order->save();
 
+            // Update order with IRIS-specific data
+            $this->updateOrderWithIrisData($order, $token, $md, $hash);
+
             // Store order ID in session for success page
             $this->checkoutSession->setLastOrderId($order->getId());
             $this->checkoutSession->setLastRealOrderId($order->getIncrementId());
             $this->checkoutSession->setLastQuoteId($quote->getId());
             $this->checkoutSession->setLastSuccessQuoteId($quote->getId());
+
+            $this->logger->info('Order created successfully for IRIS payment. Order ID: ' . $order->getId());
 
             return $order;
 
@@ -863,8 +902,11 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $params['country'] = strtoupper($billingAddress->getCountryId());
             }
 
-            Everypay::setApiKey($this->epConfig->getSecretKey());
-            Everypay::$isTest = (bool)$this->epConfig->getSandboxMode();
+            $secretKey = $this->epConfig->getSecretKey();
+            $isTest = (bool)$this->epConfig->getSandboxMode();
+
+            Everypay::setApiKey($secretKey);
+            Everypay::$isTest = $isTest;
 
             $response = Payment::create($params);
 
@@ -985,6 +1027,47 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             }
         } catch (\Exception $e) {
             $this->logger->error('Error validating quote data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update order with IRIS-specific data after creation
+     *
+     * @param \Magento\Sales\Model\Order $order
+     * @param string $token
+     * @param string $md
+     * @param string $hash
+     * @return void
+     */
+    protected function updateOrderWithIrisData($order, $token, $md, $hash)
+    {
+        try {
+            $orderPayment = $order->getPayment();
+            $orderPayment->setMethod('everypay');
+            $orderPayment->setAdditionalInformation('payment_type', 'IRIS');
+            $orderPayment->setAdditionalInformation('method_title', 'Everypay IRIS Bank Payment');
+
+            if ($token) {
+                $orderPayment->setAdditionalInformation('iris_token', $token);
+                $order->setData('everypay_source_token', $token);
+            }
+            if ($md) {
+                $orderPayment->setAdditionalInformation('iris_md', $md);
+                $order->setData('everypay_iris_md', $md);
+            }
+            if ($hash) {
+                $orderPayment->setAdditionalInformation('iris_hash', $hash);
+            }
+
+            $orderPayment->setTransactionId($token);
+            $orderPayment->setIsTransactionClosed(false);
+
+            $order->addCommentToStatusHistory('IRIS payment initiated. Token: ' . $token);
+
+            $this->orderRepository->save($order);
+
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to update order with IRIS data: ' . $e->getMessage());
         }
     }
 }

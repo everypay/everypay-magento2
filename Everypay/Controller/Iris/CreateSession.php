@@ -216,7 +216,7 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
     {
         $apiUrl = Everypay::$isTest
             ? 'https://sandbox-api.everypay.gr/iris/sessions'
-            : 'https://uat-api.everypay.gr/iris/sessions';
+            : 'https://api.everypay.gr/iris/sessions';
 
         $secretKey = $this->epConfig->getSecretKey();
 
@@ -310,20 +310,6 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                             'samesite' => 'None'
                         ]
                     );
-
-                    // ADDITIONAL: Set a backup cookie with different settings for UAT compatibility
-                    // setcookie(
-                    //     $cookieName . '_backup',
-                    //     $sessionId,
-                    //     [
-                    //         'expires' => time() + ($params['lifetime'] ?: 3600),
-                    //         'path' => '/',
-                    //         'domain' => '',
-                    //         'secure' => true,
-                    //         'httponly' => false,
-                    //         'samesite' => 'None'
-                    //     ]
-                    // );
 
                     error_log('PAYMENT GATEWAY SETUP: Set SameSite=None;Secure cookie for session: ' . $sessionId);
                     error_log('PAYMENT GATEWAY SETUP: Set backup cookie for UAT compatibility');
