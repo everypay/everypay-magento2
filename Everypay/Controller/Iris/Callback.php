@@ -181,19 +181,26 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                         'samesite' => 'None',      // Allow cross-site requests (CRITICAL for payment gateways)
                     ]);
                 } else {
-                    // Force secure=true for magento.everypay.local since we know it's HTTPS
-                    if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'magento.everypay.local') !== false) {
-                        session_set_cookie_params([
-                            'lifetime' => 3600,
-                            'path' => '/',
-                            'domain' => '',
-                            'secure' => true,          // Force secure for known HTTPS domain
-                            'httponly' => true,
-                            'samesite' => 'None',
-                        ]);
-                    } else {
-                        // Fallback for non-HTTPS environments (development)
-                        $this->logger->info('PAYMENT GATEWAY: Non-HTTPS environment detected, keeping default cookie settings');
+                    // Check if current store is configured as secure using Context's StoreManager
+                    try {
+                        $store = $this->_objectManager->get(\Magento\Store\Model\StoreManagerInterface::class)->getStore();
+                        $isStoreSecure = $store->isCurrentlySecure() || $store->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_WEB, true);
+
+                        if ($isStoreSecure) {
+                            session_set_cookie_params([
+                                'lifetime' => 3600,
+                                'path' => '/',
+                                'domain' => '',
+                                'secure' => true,          // Force secure for stores configured with HTTPS
+                                'httponly' => true,
+                                'samesite' => 'None',
+                            ]);
+                        } else {
+                            // Fallback for non-HTTPS environments (development)
+                            $this->logger->info('PAYMENT GATEWAY: Non-HTTPS environment detected, keeping default cookie settings');
+                        }
+                    } catch (\Exception $e) {
+                        $this->logger->warning('PAYMENT GATEWAY: Could not determine store security, using default settings: ' . $e->getMessage());
                     }
                 }
             } catch (\Exception $e) {
@@ -227,14 +234,19 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             return true;
         }
 
-        // Force HTTPS for known secure domains (Docker development)
-        if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'magento.everypay.local') !== false) {
-            return true;
-        }
-
         // Check URL scheme in request URI
         if (isset($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] === 'https') {
             return true;
+        }
+
+        // Check if Magento store is configured as secure
+        try {
+            $store = $this->_objectManager->get(\Magento\Store\Model\StoreManagerInterface::class)->getStore();
+            if ($store->isCurrentlySecure()) {
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Fallback if store manager is not available
         }
 
         return false;
@@ -300,9 +312,13 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
         if ($order && $order->getId()) {
             // User successfully returned from IRIS payment flow
+            // Properly clear cart using Magento's built-in method
+            $this->checkoutSession->setLastSuccessQuoteId($order->getQuoteId());
+            $this->checkoutSession->clearQuote();
+
             // Redirect to success page
             /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
-            $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+            $resultRedirect = $this->resultFactory->create(\Magento\Framework\Controller\ResultFactory::TYPE_REDIRECT);
             $resultRedirect->setPath('checkout/onepage/success', ['_query' => ['order_id' => $order->getId()]]);
             return $resultRedirect;
         }
@@ -330,6 +346,13 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             // Verify hash and process payment
             $result = $this->processPostCallback();
 
+            $this->logger->info('IRIS POST Callback Result', [
+                'has_redirect_url' => isset($result['redirect_url']),
+                'redirect_url' => $result['redirect_url'] ?? 'none',
+                'has_error' => isset($result['error_message']),
+                'error_message' => $result['error_message'] ?? 'none'
+            ]);
+
             // Add error message to session if present (before redirect)
             if (isset($result['error_message'])) {
                 $this->messageManager->addErrorMessage($result['error_message']);
@@ -343,8 +366,18 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 return $resultRedirect;
             }
 
-            // If no redirect URL, fall back to checkout (error case)
+            // If no redirect URL, fall back to success page with session order if available
+            $lastOrderId = $this->checkoutSession->getLastOrderId();
+            if ($lastOrderId) {
+                $this->logger->warning('IRIS: No redirect URL returned, but order exists in session - redirecting to success');
+                /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
+                $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+                $resultRedirect->setPath('checkout/onepage/success');
+                return $resultRedirect;
+            }
 
+            // Final fallback to checkout cart (error case)
+            $this->logger->error('IRIS: No redirect URL and no order in session - redirecting to cart');
             /** @var \Magento\Framework\Controller\Result\Redirect $resultRedirect */
             $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
             $resultRedirect->setPath('checkout/cart');
@@ -538,7 +571,6 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         $this->checkoutSession->setLastOrderId($order->getId());
         $this->checkoutSession->setLastRealOrderId($order->getIncrementId());
         $this->checkoutSession->setLastQuoteId($order->getQuoteId());
-        $this->checkoutSession->setLastSuccessQuoteId($order->getQuoteId());
 
         // Build success URL
         $successUrl = $this->_url->getUrl('checkout/onepage/success', ['_query' => ['order_id' => $order->getId()]]);
@@ -640,11 +672,10 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     protected function createOrderFromQuote($quoteId)
     {
         try {
-            // Load quote by ID
-            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $quoteRepository = $objectManager->get(\Magento\Quote\Api\CartRepositoryInterface::class);
-            $cartManagement = $objectManager->get(\Magento\Quote\Api\CartManagementInterface::class);
-            $orderRepository = $objectManager->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
+            // Load quote by ID using Context ObjectManager (proper Magento pattern)
+            $quoteRepository = $this->_objectManager->get(\Magento\Quote\Api\CartRepositoryInterface::class);
+            $cartManagement = $this->_objectManager->get(\Magento\Quote\Api\CartManagementInterface::class);
+            $orderRepository = $this->_objectManager->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
 
             $quote = $quoteRepository->get($quoteId);
 
@@ -697,8 +728,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $quote->collectTotals();
                 $quoteRepository->save($quote);
 
-                // Try Magento's proper order creation using ObjectManager
-                $cartManagement = $objectManager->get(\Magento\Quote\Api\CartManagementInterface::class);
+                // Try Magento's proper order creation
                 $orderId = $cartManagement->placeOrder($quoteId);
 
                 if ($orderId) {
@@ -725,7 +755,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $quote->setIsActive(false);
             $quoteRepository->save($quote);
 
-            $orderFactory = $objectManager->get(\Magento\Sales\Model\OrderFactory::class);
+            $orderFactory = $this->_objectManager->get(\Magento\Sales\Model\OrderFactory::class);
             $order = $orderFactory->create();
 
             // Set order data from quote
@@ -766,7 +796,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
             // Add items to order
             foreach ($quote->getAllVisibleItems() as $quoteItem) {
-                $orderItem = $objectManager->create(\Magento\Sales\Model\Order\Item::class);
+                $orderItem = $this->_objectManager->create(\Magento\Sales\Model\Order\Item::class);
                 $orderItem->setQuoteItemId($quoteItem->getId());
                 $orderItem->setProductId($quoteItem->getProductId());
                 $orderItem->setSku($quoteItem->getSku());
@@ -780,21 +810,21 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             }
 
             // Set addresses
-            $addressFactory = $objectManager->get(\Magento\Sales\Model\Order\Address::class);
-            $billingAddress = $objectManager->create(\Magento\Sales\Model\Order\Address::class);
+            $addressFactory = $this->_objectManager->get(\Magento\Sales\Model\Order\Address::class);
+            $billingAddress = $this->_objectManager->create(\Magento\Sales\Model\Order\Address::class);
             $billingAddress->setData($quote->getBillingAddress()->getData());
             $billingAddress->setAddressType(\Magento\Sales\Model\Order\Address::TYPE_BILLING);
             $order->setBillingAddress($billingAddress);
 
             if (!$quote->isVirtual()) {
-                $shippingAddress = $objectManager->create(\Magento\Sales\Model\Order\Address::class);
+                $shippingAddress = $this->_objectManager->create(\Magento\Sales\Model\Order\Address::class);
                 $shippingAddress->setData($quote->getShippingAddress()->getData());
                 $shippingAddress->setAddressType(\Magento\Sales\Model\Order\Address::TYPE_SHIPPING);
                 $order->setShippingAddress($shippingAddress);
             }
 
             // Create payment without processing
-            $payment = $objectManager->create(\Magento\Sales\Model\Order\Payment::class);
+            $payment = $this->_objectManager->create(\Magento\Sales\Model\Order\Payment::class);
             $payment->setMethod('everypay');
             $payment->setAdditionalInformation('payment_type', 'IRIS');
             $payment->setAdditionalInformation('method_title', 'Everypay IRIS Bank Payment');
@@ -802,7 +832,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $order->setPayment($payment);
 
             // Save order
-            $orderRepository = $objectManager->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
+            $orderRepository = $this->_objectManager->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
             $order = $orderRepository->save($order);
 
             if (!$order) {
@@ -848,7 +878,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $this->checkoutSession->setLastOrderId($order->getId());
             $this->checkoutSession->setLastRealOrderId($order->getIncrementId());
             $this->checkoutSession->setLastQuoteId($quote->getId());
-            $this->checkoutSession->setLastSuccessQuoteId($quote->getId());
+            // Cart emptying handled in POST callback to prevent cache issues
 
             $this->logger->info('Order created successfully for IRIS payment. Order ID: ' . $order->getId());
 
