@@ -100,6 +100,28 @@ define(
                 });
             },
 
+            showEverypayError: function (message) {
+                var messageContainer = document.querySelector('.message.message-error.error');
+                if (!messageContainer) {
+                    var checkoutPage = document.querySelector('.checkout-container');
+                    if (checkoutPage) {
+                        var errorDiv = document.createElement('div');
+                        errorDiv.className = 'message message-error error';
+                        errorDiv.innerHTML = '<div>' + message + '</div>';
+                        checkoutPage.insertBefore(errorDiv, checkoutPage.firstChild);
+
+                        setTimeout(function() {
+                            if (errorDiv.parentNode) {
+                                errorDiv.parentNode.removeChild(errorDiv);
+                            }
+                        }, 5000);
+                    }
+                } else {
+                    messageContainer.innerHTML = '<div>' + message + '</div>';
+                    messageContainer.style.display = 'block';
+                }
+            },
+
             initObservable: function () {
 
                 this._super()
@@ -376,6 +398,7 @@ define(
                 if (
                     !window.checkoutConfig.payment.everypay.isGooglePayEnabled
                     && !window.checkoutConfig.payment.everypay.isApplePayEnabled
+                    && !window.checkoutConfig.payment.everypay.isIrisEnabled
                 ) {
                     return null;
                 }
@@ -388,6 +411,10 @@ define(
 
                 if (window.checkoutConfig.payment.everypay.applePay) {
                     result.applePay = window.checkoutConfig.payment.everypay.applePay;
+                }
+
+                if (window.checkoutConfig.payment.everypay.iris) {
+                    result.iris = window.checkoutConfig.payment.everypay.iris;
                 }
 
                 return result;

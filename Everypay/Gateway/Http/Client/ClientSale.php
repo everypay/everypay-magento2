@@ -44,6 +44,7 @@ class ClientSale implements ClientInterface
     private $applePayMerchantUrl;
     private $applePayAllowedCardNetworks;
     private $applePayButtonColor;
+    private $isIrisEnabled;
 
     /**
      * @param LoggerInterface $logger
@@ -73,6 +74,7 @@ class ClientSale implements ClientInterface
         $this->applePayMerchantUrl = $epConfig->getApplePayMerchantUrl();
         $this->applePayAllowedCardNetworks = $epConfig->getApplePayAllowedCardNetworks();
         $this->applePayButtonColor = $epConfig->getApplePayButtonColor();
+        $this->isIrisEnabled = $epConfig->getIsIrisEnabled();
         $this->customerRepositoryInterface = $customerRepositoryInterface;
     }
 

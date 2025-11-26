@@ -157,4 +157,26 @@ class EverypayConfig
             'payment/everypay/applepay_button_color'
         );
     }
+
+    public function getIsIrisEnabled()
+    {
+        $isIrisEnabled = $this->scopeConfig->getValue(
+            'payment/everypay/iris_feature'
+        );
+
+        return boolval($isIrisEnabled);
+    }
+
+    public function getIrisMerchantName()
+    {
+        return $this->scopeConfig->getValue(
+            'payment/everypay/iris_merchant_name'
+        );
+    }
+
+    public function getIrisCountry()
+    {
+        // Only Greece is supported for IRIS
+        return 'GR';
+    }
 }

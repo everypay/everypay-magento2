@@ -166,6 +166,21 @@
                     </depends>
                 </field>
                 <!-- Apple Play settings end -->
+
+                <!-- IRIS settings begin -->
+                <field id="iris_feature" translate="label" type="select" sortOrder="200" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>IRIS</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="iris_merchant_name" translate="label" type="text" sortOrder="201" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>IRIS Merchant Name</label>
+                    <comment><![CDATA[The name to be displayed in the IRIS payment flow]]></comment>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="iris_feature">1</field>
+                    </depends>
+                </field>
+                <!-- IRIS settings end -->
             </group>
         </section>
     </system>
