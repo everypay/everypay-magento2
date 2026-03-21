@@ -135,12 +135,15 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
             }
 
             $callbackUrl = $this->_url->getUrl('everypay/iris/callback', ['_secure' => true]);
+            $webhookUrl = $this->_url->getUrl('everypay/iris/webhook', ['_secure' => true]);
+            $callbackQuery = [];
 
             $params = [
                 'amount' => $amount,
                 'currency' => strtoupper($currency),
                 'country' => strtoupper($country),
                 'callback_url' => $callbackUrl,
+                'webhook_url' => $webhookUrl,
             ];
 
             // Store md reference and quote ID for callback lookup
@@ -150,6 +153,16 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                 $mdWithQuote = $md . '_qid_' . $quote->getId();
                 $params['md'] = $mdWithQuote;
                 $quote->setData('everypay_iris_md', $mdWithQuote);
+                $this->checkoutSession->setData('everypay_iris_last_md', $mdWithQuote);
+                $this->checkoutSession->setData('everypay_iris_last_quote_id', $quote->getId());
+                $callbackQuery['md'] = $mdWithQuote;
+            }
+
+            if (!empty($callbackQuery)) {
+                $params['callback_url'] = $this->_url->getUrl('everypay/iris/callback', [
+                    '_secure' => true,
+                    '_query' => $callbackQuery,
+                ]);
             }
 
             if (!empty($uuid)) {

@@ -80,10 +80,10 @@ define([
                 // Add IRIS if enabled
                 if (window.checkoutConfig.payment.everypay.isIrisEnabled && window.checkoutConfig.payment.everypay.iris) {
                     let irisConfig = window.checkoutConfig.payment.everypay.iris;
-                    let callbackUrl = window.location.origin + '/everypay/iris/callback';
-                    
+
                     // Generate a unique md reference for this transaction
                     let md = 'magento_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    let callbackUrl = window.location.origin + '/everypay/iris/callback?md=' + encodeURIComponent(md);
                     
                     let iris = {
                         merchantName: irisConfig.merchantName,
