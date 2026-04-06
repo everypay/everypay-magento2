@@ -9,8 +9,9 @@ if (isSandboxMode && isSandboxMode == 1) {
 
 define([
     'EverypayHelpers',
+    'mage/url',
     everypayUrl
-], function(Helpers){
+], function(Helpers, urlBuilder){
 
     return {
 
@@ -83,7 +84,7 @@ define([
 
                     // Generate a unique md reference for this transaction
                     let md = 'magento_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
-                    let callbackUrl = window.location.origin + '/everypay/iris/callback?md=' + encodeURIComponent(md);
+                    let callbackUrl = urlBuilder.build('everypay/iris/callback') + '?md=' + encodeURIComponent(md);
                     
                     let iris = {
                         merchantName: irisConfig.merchantName,
@@ -95,7 +96,7 @@ define([
                     // Create IRIS session handler
                     Object.defineProperty(iris, 'sessionHandler', {
                         value: Helpers.createIrisSessionHandler({
-                            ajaxUrl: window.location.origin + '/everypay/iris/createsession',
+                            ajaxUrl: urlBuilder.build('everypay/iris/createsession'),
                             amount: amount,
                             currency: billingData.currency || 'EUR',
                             country: irisConfig.country,
