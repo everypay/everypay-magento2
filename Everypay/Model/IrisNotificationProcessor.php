@@ -315,8 +315,33 @@ class IrisNotificationProcessor
             $order->setStatus(Order::STATE_CANCELED);
         }
 
+        $this->restoreQuoteForFailedOrder($order);
         $this->addCommentOnce($order, sprintf('EveryPay IRIS %s error: %s', $source, $message));
         $this->orderRepository->save($order);
+    }
+
+    private function restoreQuoteForFailedOrder(Order $order)
+    {
+        $quoteId = (int) $order->getQuoteId();
+        if (!$quoteId) {
+            return;
+        }
+
+        try {
+            $quote = $this->quoteRepository->get($quoteId);
+            if (!$quote || !$quote->getId()) {
+                return;
+            }
+
+            $quote->setIsActive(true);
+            $quote->setReservedOrderId(null);
+            $this->quoteRepository->save($quote);
+        } catch (\Exception $e) {
+            $this->logger->warning('IRIS failed to restore quote for canceled order: ' . $e->getMessage(), [
+                'order_id' => $order->getEntityId(),
+                'quote_id' => $quoteId,
+            ]);
+        }
     }
 
     private function addCommentOnce(Order $order, $comment)
@@ -534,7 +559,7 @@ class IrisNotificationProcessor
     {
         try {
             $params = [
-                'amount' => (int) ($order->getGrandTotal() * 100),
+                'amount' => (int) round($order->getGrandTotal() * 100),
                 'description' => $order->getStore()->getName() . ' / Order #' . $order->getIncrementId(),
                 'token' => $token,
             ];
