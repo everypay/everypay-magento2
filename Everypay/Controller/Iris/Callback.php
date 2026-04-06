@@ -189,6 +189,22 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
 
         if ($order && $order->getId()) {
             if (!$this->isSuccessfulOrder($order)) {
+                if ($this->isPendingOrder($order)) {
+                    $this->logger->info('IRIS GET callback resolved pending order; redirecting to pending page', [
+                        'order_id' => $order->getId(),
+                        'state' => $order->getState(),
+                        'status' => $order->getStatus(),
+                    ]);
+
+                    $this->checkoutSession->setLastOrderId($order->getId());
+                    $this->checkoutSession->setLastRealOrderId($order->getIncrementId());
+                    $this->checkoutSession->setLastQuoteId($order->getQuoteId());
+
+                    $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+                    $resultRedirect->setPath('everypay/iris/pending');
+                    return $resultRedirect;
+                }
+
                 $this->logger->info('IRIS GET callback resolved unpaid order; refusing success redirect', [
                     'order_id' => $order->getId(),
                     'state' => $order->getState(),
@@ -270,5 +286,11 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     private function isSuccessfulOrder(Order $order)
     {
         return in_array($order->getState(), [Order::STATE_PROCESSING, Order::STATE_COMPLETE], true);
+    }
+
+    private function isPendingOrder(Order $order)
+    {
+        return in_array($order->getState(), [Order::STATE_NEW, Order::STATE_PENDING_PAYMENT], true)
+            || $order->getStatus() === Order::STATE_PENDING_PAYMENT;
     }
 }

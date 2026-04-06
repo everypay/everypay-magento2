@@ -1,0 +1,22 @@
+<?php
+/**
+ * @var \Magento\Framework\View\Element\Template $block
+ */
+?>
+<div class="checkout-success">
+    <p><?= $block->escapeHtml(__('Your IRIS payment is still being confirmed.')) ?></p>
+    <p><?= $block->escapeHtml(__('This can take a few moments. You can check again shortly or return to your cart.')) ?></p>
+
+    <div class="actions-toolbar">
+        <div class="primary">
+            <a class="action primary continue" href="<?= $block->escapeUrl($block->getUrl('everypay/iris/callback')) ?>">
+                <span><?= $block->escapeHtml(__('Check Payment Status')) ?></span>
+            </a>
+        </div>
+        <div class="secondary">
+            <a class="action secondary" href="<?= $block->escapeUrl($block->getUrl('checkout/cart')) ?>">
+                <span><?= $block->escapeHtml(__('Return to Cart')) ?></span>
+            </a>
+        </div>
+    </div>
+</div>
