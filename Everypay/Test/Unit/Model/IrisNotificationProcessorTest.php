@@ -391,6 +391,112 @@ class IrisNotificationProcessorTest extends \PHPUnit_Framework_TestCase
         static::assertFalse($this->invokePrivateMethod($this->processor, 'isIdempotentPaidOrder', [$order, 'secure_token']));
     }
 
+    public function testWithQuoteOrderCreationLockExecutesCallbackAndReleasesLock()
+    {
+        $resource = $this->getMockBuilder(\Magento\Framework\App\ResourceConnection::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getConnection'])
+            ->getMock();
+        $connection = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['fetchOne'])
+            ->getMock();
+        $callbackInvoked = false;
+
+        $this->objectManager->expects(static::once())
+            ->method('get')
+            ->with(\Magento\Framework\App\ResourceConnection::class)
+            ->willReturn($resource);
+        $resource->expects(static::once())
+            ->method('getConnection')
+            ->willReturn($connection);
+        $connection->expects(static::exactly(2))
+            ->method('fetchOne')
+            ->willReturnMap([
+                ['SELECT GET_LOCK(?, 5)', ['everypay_iris_quote_42'], 1],
+                ['SELECT RELEASE_LOCK(?)', ['everypay_iris_quote_42'], 1],
+            ]);
+
+        $result = $this->invokePrivateMethod($this->processor, 'withQuoteOrderCreationLock', [
+            42,
+            function () use (&$callbackInvoked) {
+                $callbackInvoked = true;
+                return 'created';
+            },
+        ]);
+
+        static::assertTrue($callbackInvoked);
+        static::assertSame('created', $result);
+    }
+
+    public function testWithQuoteOrderCreationLockFallsBackToExistingOrderWhenLockUnavailable()
+    {
+        $resource = $this->getMockBuilder(\Magento\Framework\App\ResourceConnection::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getConnection'])
+            ->getMock();
+        $connection = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['fetchOne'])
+            ->getMock();
+        $order = $this->getMockBuilder(Order::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+        $orderModel = $this->getMockBuilder(Order::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getCollection'])
+            ->getMock();
+        $collection = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['addFieldToFilter', 'setOrder', 'setPageSize', 'getSize', 'getFirstItem'])
+            ->getMock();
+
+        $this->objectManager->expects(static::once())
+            ->method('get')
+            ->with(\Magento\Framework\App\ResourceConnection::class)
+            ->willReturn($resource);
+        $resource->expects(static::once())
+            ->method('getConnection')
+            ->willReturn($connection);
+        $connection->expects(static::once())
+            ->method('fetchOne')
+            ->with('SELECT GET_LOCK(?, 5)', ['everypay_iris_quote_42'])
+            ->willReturn(0);
+        $this->orderFactory->expects(static::once())
+            ->method('create')
+            ->willReturn($orderModel);
+        $orderModel->expects(static::once())
+            ->method('getCollection')
+            ->willReturn($collection);
+        $collection->expects(static::once())
+            ->method('addFieldToFilter')
+            ->with('quote_id', 42)
+            ->willReturnSelf();
+        $collection->expects(static::once())
+            ->method('setOrder')
+            ->with('created_at', 'DESC')
+            ->willReturnSelf();
+        $collection->expects(static::once())
+            ->method('setPageSize')
+            ->with(1)
+            ->willReturnSelf();
+        $collection->expects(static::once())
+            ->method('getSize')
+            ->willReturn(1);
+        $collection->expects(static::once())
+            ->method('getFirstItem')
+            ->willReturn($order);
+        $this->logger->expects(static::once())
+            ->method('warning')
+            ->with('IRIS could not acquire quote creation lock', ['quote_id' => 42]);
+
+        $result = $this->invokePrivateMethod($this->processor, 'withQuoteOrderCreationLock', [
+            42,
+            function () {
+                return 'created';
+            },
+        ]);
+
+        static::assertSame($order, $result);
+    }
+
     private function invokePrivateMethod($object, $methodName, array $arguments = [])
     {
         $reflection = new \ReflectionMethod($object, $methodName);

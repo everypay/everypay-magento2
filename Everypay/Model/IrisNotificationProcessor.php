@@ -186,24 +186,24 @@ class IrisNotificationProcessor
                 $quoteId = (int) $parts[1];
 
                 try {
-                    $orderCollection = $this->orderFactory->create()->getCollection()
-                        ->addFieldToFilter('quote_id', $quoteId)
-                        ->setOrder('created_at', 'DESC')
-                        ->setPageSize(1);
+                    return $this->withQuoteOrderCreationLock($quoteId, function () use ($quoteId, $token, $md, $allowCreateFromQuote) {
+                        $existingOrder = $this->findLatestOrderByQuoteId($quoteId);
+                        if ($existingOrder && $existingOrder->getId()) {
+                            return $existingOrder;
+                        }
 
-                    if ($orderCollection->getSize() > 0) {
-                        return $orderCollection->getFirstItem();
-                    }
+                        if (!empty($token) && $allowCreateFromQuote) {
+                            return $this->createOrderFromQuote($quoteId, $token, $md, '');
+                        }
 
-                    if (!empty($token) && $allowCreateFromQuote) {
-                        return $this->createOrderFromQuote($quoteId, $token, $md, '');
-                    }
+                        $this->logger->warning('IRIS quote reference found without a verified payment token; skipping order creation', [
+                            'quote_id' => $quoteId,
+                            'token_present' => !empty($token),
+                            'allow_create_from_quote' => (bool) $allowCreateFromQuote,
+                        ]);
 
-                    $this->logger->warning('IRIS quote reference found without a verified payment token; skipping order creation', [
-                        'quote_id' => $quoteId,
-                        'token_present' => !empty($token),
-                        'allow_create_from_quote' => (bool) $allowCreateFromQuote,
-                    ]);
+                        return null;
+                    });
                 } catch (\Exception $e) {
                     $this->logger->error('Error finding order by quote ID: ' . $e->getMessage());
                 }
@@ -356,6 +356,57 @@ class IrisNotificationProcessor
                 'order_id' => $order->getEntityId(),
                 'quote_id' => $quoteId,
             ]);
+        }
+    }
+
+    private function findLatestOrderByQuoteId($quoteId)
+    {
+        $orderCollection = $this->orderFactory->create()->getCollection()
+            ->addFieldToFilter('quote_id', $quoteId)
+            ->setOrder('created_at', 'DESC')
+            ->setPageSize(1);
+
+        if ($orderCollection->getSize() > 0) {
+            return $orderCollection->getFirstItem();
+        }
+
+        return null;
+    }
+
+    private function withQuoteOrderCreationLock($quoteId, callable $callback)
+    {
+        $resource = $this->objectManager->get(\Magento\Framework\App\ResourceConnection::class);
+        $connection = $resource->getConnection();
+        $lockName = sprintf('everypay_iris_quote_%d', (int) $quoteId);
+        $lockAcquired = false;
+
+        try {
+            $lockAcquired = (bool) $connection->fetchOne('SELECT GET_LOCK(?, 5)', array($lockName));
+            if (!$lockAcquired) {
+                $this->logger->warning('IRIS could not acquire quote creation lock', [
+                    'quote_id' => $quoteId,
+                ]);
+
+                return $this->findLatestOrderByQuoteId($quoteId);
+            }
+
+            return call_user_func($callback);
+        } catch (\Exception $e) {
+            $this->logger->warning('IRIS quote creation lock failed: ' . $e->getMessage(), [
+                'quote_id' => $quoteId,
+            ]);
+
+            return $this->findLatestOrderByQuoteId($quoteId);
+        } finally {
+            if ($lockAcquired) {
+                try {
+                    $connection->fetchOne('SELECT RELEASE_LOCK(?)', array($lockName));
+                } catch (\Exception $e) {
+                    $this->logger->warning('IRIS could not release quote creation lock: ' . $e->getMessage(), [
+                        'quote_id' => $quoteId,
+                    ]);
+                }
+            }
         }
     }
 
