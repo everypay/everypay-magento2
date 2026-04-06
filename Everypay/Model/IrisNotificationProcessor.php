@@ -313,7 +313,7 @@ class IrisNotificationProcessor
         $payment->setLastTransId($paymentToken);
         $payment->setIsTransactionClosed(false);
         $payment->registerCaptureNotification($order->getGrandTotal());
-        $payment->setAdditionalInformation('payment_type', 'IRIS Bank Payment');
+        $payment->setAdditionalInformation('payment_type', 'IRIS');
 
         if (!empty($sourceToken)) {
             $payment->setAdditionalInformation('iris_token', $sourceToken);
