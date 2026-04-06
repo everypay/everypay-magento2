@@ -249,10 +249,10 @@ class IrisNotificationProcessor
         $errorMessage = (string) ($payload['error_message'] ?? $request->getParam('error_message') ?? '');
 
         $this->logger->info('IRIS notification verified', [
-            'token' => $token,
             'md' => $md,
             'error_status' => $errorStatus,
-            'payload' => $payload,
+            'has_token' => $token !== '',
+            'has_error_message' => $errorMessage !== '',
         ]);
 
         return [
