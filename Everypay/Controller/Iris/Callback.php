@@ -17,6 +17,7 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Message\ManagerInterface;
+use Magento\Sales\Model\Order;
 use Psr\Log\LoggerInterface;
 
 class Callback extends Action implements HttpGetActionInterface, HttpPostActionInterface, CsrfAwareActionInterface
@@ -187,6 +188,21 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
         }
 
         if ($order && $order->getId()) {
+            if (!$this->isSuccessfulOrder($order)) {
+                $this->logger->info('IRIS GET callback resolved unpaid order; refusing success redirect', [
+                    'order_id' => $order->getId(),
+                    'state' => $order->getState(),
+                    'status' => $order->getStatus(),
+                ]);
+                $this->messageManager->addErrorMessage(
+                    __('Your payment is still pending or was not completed. Please contact support if you completed the payment.')
+                );
+
+                $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+                $resultRedirect->setPath('checkout/cart');
+                return $resultRedirect;
+            }
+
             $this->checkoutSession->setLastSuccessQuoteId($order->getQuoteId());
             $this->checkoutSession->setLastOrderId($order->getId());
             $this->checkoutSession->setLastRealOrderId($order->getIncrementId());
@@ -249,5 +265,10 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $resultRedirect->setPath('checkout/cart');
             return $resultRedirect;
         }
+    }
+
+    private function isSuccessfulOrder(Order $order)
+    {
+        return in_array($order->getState(), [Order::STATE_PROCESSING, Order::STATE_COMPLETE], true);
     }
 }

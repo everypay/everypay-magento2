@@ -11,6 +11,7 @@ use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\App\ObjectManager;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Sales\Model\Order;
 
 class Success extends Action implements HttpGetActionInterface
 {
@@ -47,15 +48,20 @@ class Success extends Action implements HttpGetActionInterface
             return $this->resultRedirectFactory->create()->setPath('checkout/cart');
         }
 
-        if (!$order->getEntityId()) {
+        if (!$order->getEntityId() || !$this->isSuccessfulOrder($order)) {
             return $this->resultRedirectFactory->create()->setPath('checkout/cart');
         }
 
         return $this->resultPageFactory->create();
     }
 
-    private function getCheckoutSession()
+    protected function getCheckoutSession()
     {
         return ObjectManager::getInstance()->get(\Magento\Checkout\Model\Session::class);
+    }
+
+    private function isSuccessfulOrder(Order $order)
+    {
+        return in_array($order->getState(), [Order::STATE_PROCESSING, Order::STATE_COMPLETE], true);
     }
 }
