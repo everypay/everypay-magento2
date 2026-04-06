@@ -46,12 +46,6 @@ class Success extends Template
         return $order ? $order->getIncrementId() : null;
     }
 
-    public function getCustomerEmail()
-    {
-        $order = $this->getOrder();
-        return $order ? $order->getCustomerEmail() : null;
-    }
-
     public function getContinueUrl()
     {
         return $this->getUrl('');

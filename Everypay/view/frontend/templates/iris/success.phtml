@@ -3,7 +3,6 @@
  * @var \Everypay\Everypay\Block\Iris\Success $block
  */
 $orderId = $block->getOrderIncrementId();
-$customerEmail = $block->getCustomerEmail();
 ?>
 <div class="checkout-success">
     <?php if ($orderId): ?>
@@ -18,11 +17,4 @@ $customerEmail = $block->getCustomerEmail();
             </a>
         </div>
     </div>
-
-    <?php if ($customerEmail): ?>
-        <div class="checkout-registration">
-            <p><?= $block->escapeHtml(__('You can track your order status by creating an account.')) ?></p>
-            <p><?= $block->escapeHtml(__('Email Address: %1', $customerEmail)) ?></p>
-        </div>
-    <?php endif; ?>
 </div>
