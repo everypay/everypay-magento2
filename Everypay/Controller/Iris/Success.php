@@ -8,7 +8,7 @@ namespace Everypay\Everypay\Controller\Iris;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Action\HttpGetActionInterface;
-use Magento\Framework\Controller\ResultFactory;
+use Magento\Framework\App\ObjectManager;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
 
@@ -36,7 +36,7 @@ class Success extends Action implements HttpGetActionInterface
 
     public function execute()
     {
-        $orderId = (int) $this->getRequest()->getParam('order_id');
+        $orderId = (int) $this->getCheckoutSession()->getLastOrderId();
         if (!$orderId) {
             return $this->resultRedirectFactory->create()->setPath('checkout/cart');
         }
@@ -52,5 +52,10 @@ class Success extends Action implements HttpGetActionInterface
         }
 
         return $this->resultPageFactory->create();
+    }
+
+    private function getCheckoutSession()
+    {
+        return ObjectManager::getInstance()->get(\Magento\Checkout\Model\Session::class);
     }
 }

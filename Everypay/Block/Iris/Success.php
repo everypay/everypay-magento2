@@ -5,6 +5,7 @@
  */
 namespace Everypay\Everypay\Block\Iris;
 
+use Magento\Framework\App\ObjectManager;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Sales\Api\OrderRepositoryInterface;
@@ -27,7 +28,7 @@ class Success extends Template
 
     public function getOrder()
     {
-        $orderId = (int) $this->getRequest()->getParam('order_id');
+        $orderId = (int) $this->getCheckoutSession()->getLastOrderId();
         if (!$orderId) {
             return null;
         }
@@ -54,5 +55,10 @@ class Success extends Template
     public function getContinueUrl()
     {
         return $this->getUrl('');
+    }
+
+    protected function getCheckoutSession()
+    {
+        return ObjectManager::getInstance()->get(\Magento\Checkout\Model\Session::class);
     }
 }

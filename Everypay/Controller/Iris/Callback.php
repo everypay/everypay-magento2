@@ -171,7 +171,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $md = $this->checkoutSession->getData('everypay_iris_last_md');
         }
 
-        $order = $this->notificationProcessor->findOrderByIrisReference($token, $md);
+        $order = $this->notificationProcessor->findOrderByIrisReference($token, $md, false);
 
         if ((!$order || !$order->getId()) && !$token && !$md) {
             $lastOrderId = (int) $this->checkoutSession->getLastOrderId();
@@ -196,7 +196,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
             $this->checkoutSession->clearQuote();
 
             $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
-            $resultRedirect->setPath('everypay/iris/success', ['_query' => ['order_id' => $order->getId()]]);
+            $resultRedirect->setPath('everypay/iris/success');
             return $resultRedirect;
         }
 
@@ -225,7 +225,7 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
                 $this->checkoutSession->clearQuote();
 
                 $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
-                $resultRedirect->setPath('everypay/iris/success', ['_query' => ['order_id' => $order->getId()]]);
+                $resultRedirect->setPath('everypay/iris/success');
                 return $resultRedirect;
             }
 

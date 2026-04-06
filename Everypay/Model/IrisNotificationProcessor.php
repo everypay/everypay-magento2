@@ -61,7 +61,7 @@ class IrisNotificationProcessor
         $hasError = $payloadResult['has_error'];
         $errorMessage = $payloadResult['error_message'];
 
-        $order = $this->findOrderByIrisReference($token, $md);
+        $order = $this->findOrderByIrisReference($token, $md, true);
         if (!$order || !$order->getEntityId()) {
             $this->logger->error('IRIS notification: order not found', [
                 'source' => $source,
@@ -144,7 +144,7 @@ class IrisNotificationProcessor
         ];
     }
 
-    public function findOrderByIrisReference($token, $md)
+    public function findOrderByIrisReference($token, $md, $allowCreateFromQuote = false)
     {
         if (!empty($token)) {
             try {
@@ -180,7 +180,15 @@ class IrisNotificationProcessor
                         return $orderCollection->getFirstItem();
                     }
 
-                    return $this->createOrderFromQuote($quoteId, $token, $md, '');
+                    if (!empty($token) && $allowCreateFromQuote) {
+                        return $this->createOrderFromQuote($quoteId, $token, $md, '');
+                    }
+
+                    $this->logger->warning('IRIS quote reference found without a verified payment token; skipping order creation', [
+                        'quote_id' => $quoteId,
+                        'token_present' => !empty($token),
+                        'allow_create_from_quote' => (bool) $allowCreateFromQuote,
+                    ]);
                 } catch (\Exception $e) {
                     $this->logger->error('Error finding order by quote ID: ' . $e->getMessage());
                 }
