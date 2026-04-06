@@ -343,6 +343,54 @@ class IrisNotificationProcessorTest extends \PHPUnit_Framework_TestCase
         $this->invokePrivateMethod($this->processor, 'markOrderAsFailed', [$order, 'failed', 'callback']);
     }
 
+    public function testIsIdempotentPaidOrderRequiresPaidStateAndMatchingToken()
+    {
+        $order = $this->getMockBuilder(Order::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getState', 'getPayment'])
+            ->getMock();
+        $payment = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['getAdditionalInformation'])
+            ->getMock();
+
+        $order->expects(static::once())
+            ->method('getState')
+            ->willReturn(Order::STATE_PROCESSING);
+        $order->expects(static::once())
+            ->method('getPayment')
+            ->willReturn($payment);
+        $payment->expects(static::once())
+            ->method('getAdditionalInformation')
+            ->with('iris_token')
+            ->willReturn('secure_token');
+
+        static::assertTrue($this->invokePrivateMethod($this->processor, 'isIdempotentPaidOrder', [$order, 'secure_token']));
+    }
+
+    public function testIsIdempotentPaidOrderRejectsMismatchedToken()
+    {
+        $order = $this->getMockBuilder(Order::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['getState', 'getPayment'])
+            ->getMock();
+        $payment = $this->getMockBuilder(\stdClass::class)
+            ->setMethods(['getAdditionalInformation'])
+            ->getMock();
+
+        $order->expects(static::once())
+            ->method('getState')
+            ->willReturn(Order::STATE_PROCESSING);
+        $order->expects(static::once())
+            ->method('getPayment')
+            ->willReturn($payment);
+        $payment->expects(static::once())
+            ->method('getAdditionalInformation')
+            ->with('iris_token')
+            ->willReturn('different_token');
+
+        static::assertFalse($this->invokePrivateMethod($this->processor, 'isIdempotentPaidOrder', [$order, 'secure_token']));
+    }
+
     private function invokePrivateMethod($object, $methodName, array $arguments = [])
     {
         $reflection = new \ReflectionMethod($object, $methodName);

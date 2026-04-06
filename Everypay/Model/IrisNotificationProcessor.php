@@ -78,7 +78,7 @@ class IrisNotificationProcessor
 
         $payment = $order->getPayment();
         $existingToken = (string) $payment->getAdditionalInformation('iris_token');
-        $orderAlreadyPaid = in_array($order->getState(), [Order::STATE_PROCESSING, Order::STATE_COMPLETE], true);
+        $orderAlreadyPaid = $this->isSuccessfulOrder($order);
 
         if ($orderAlreadyPaid && $existingToken && $token && $existingToken !== $token) {
             $this->logger->error('IRIS notification token conflict', [
@@ -124,6 +124,21 @@ class IrisNotificationProcessor
 
         $paymentToken = $this->createIrisPayment($order, $token);
         if (empty($paymentToken)) {
+            $reloadedOrder = $this->reloadOrder($order);
+            if ($reloadedOrder && $this->isIdempotentPaidOrder($reloadedOrder, $token)) {
+                $this->logger->info('IRIS payment creation returned empty token after order was already paid', [
+                    'source' => $source,
+                    'order_id' => $reloadedOrder->getEntityId(),
+                    'has_token' => $token !== '',
+                ]);
+
+                return [
+                    'success' => true,
+                    'already_processed' => true,
+                    'order' => $reloadedOrder,
+                ];
+            }
+
             $message = __('IRIS payment failed. Please try another payment method.');
             $this->markOrderAsFailed($order, $message, $source);
 
@@ -598,5 +613,39 @@ class IrisNotificationProcessor
             ]);
             return null;
         }
+    }
+
+    private function reloadOrder(Order $order)
+    {
+        try {
+            return $this->orderRepository->get($order->getEntityId());
+        } catch (\Exception $e) {
+            $this->logger->warning('IRIS failed to reload order during idempotency check: ' . $e->getMessage(), [
+                'order_id' => $order->getEntityId(),
+            ]);
+        }
+
+        return null;
+    }
+
+    private function isSuccessfulOrder(Order $order)
+    {
+        return in_array($order->getState(), [Order::STATE_PROCESSING, Order::STATE_COMPLETE], true);
+    }
+
+    private function isIdempotentPaidOrder(Order $order, $token)
+    {
+        if (!$this->isSuccessfulOrder($order)) {
+            return false;
+        }
+
+        $payment = $order->getPayment();
+        if (!$payment) {
+            return false;
+        }
+
+        $existingToken = (string) $payment->getAdditionalInformation('iris_token');
+
+        return !$token || !$existingToken || $existingToken === $token;
     }
 }
