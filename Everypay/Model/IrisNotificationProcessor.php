@@ -222,7 +222,8 @@ class IrisNotificationProcessor
 
     private function extractPayload(RequestInterface $request)
     {
-        $hash = (string) $request->getParam('hash');
+        $requestPayload = $this->extractJsonPayload($request);
+        $hash = (string) ($requestPayload['hash'] ?? $request->getParam('hash') ?? '');
         if (empty($hash)) {
             return [
                 'success' => false,
@@ -260,10 +261,10 @@ class IrisNotificationProcessor
             $payload = [];
         }
 
-        $token = (string) ($payload['token'] ?? $request->getParam('token') ?? '');
-        $md = (string) ($payload['md'] ?? $request->getParam('md') ?? '');
-        $errorStatus = (string) ($payload['error_status'] ?? $request->getParam('error_status') ?? '');
-        $errorMessage = (string) ($payload['error_message'] ?? $request->getParam('error_message') ?? '');
+        $token = (string) ($payload['token'] ?? $requestPayload['token'] ?? $request->getParam('token') ?? '');
+        $md = (string) ($payload['md'] ?? $requestPayload['md'] ?? $request->getParam('md') ?? '');
+        $errorStatus = (string) ($payload['error_status'] ?? $requestPayload['error_status'] ?? $request->getParam('error_status') ?? '');
+        $errorMessage = (string) ($payload['error_message'] ?? $requestPayload['error_message'] ?? $request->getParam('error_message') ?? '');
 
         $this->logger->info('IRIS notification verified', [
             'md' => $md,
@@ -280,6 +281,29 @@ class IrisNotificationProcessor
             'error_message' => $errorMessage,
             'has_error' => !empty($errorStatus) || (!empty($errorMessage) && empty($token)),
         ];
+    }
+
+    private function extractJsonPayload(RequestInterface $request)
+    {
+        $rawBody = $this->getRawRequestBody($request);
+        if ($rawBody === '') {
+            return [];
+        }
+
+        $payload = json_decode($rawBody, true);
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    protected function getRawRequestBody(RequestInterface $request)
+    {
+        if (method_exists($request, 'getContent')) {
+            return (string) $request->getContent();
+        }
+
+        $rawBody = file_get_contents('php://input');
+
+        return is_string($rawBody) ? $rawBody : '';
     }
 
     private function applyIrisMetadata(Order $order, $token, $md, $hash)

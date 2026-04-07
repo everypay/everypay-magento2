@@ -188,6 +188,53 @@ class IrisNotificationProcessorTest extends \PHPUnit_Framework_TestCase
         static::assertSame('IRIS payment error. Hash verification failed.', (string) $result['error_message']);
     }
 
+    public function testExtractPayloadReadsHashAndFallbackFieldsFromJsonBody()
+    {
+        $hash = $this->buildValidHash([
+            'token' => '',
+            'md' => '',
+            'error_status' => '',
+            'error_message' => '',
+        ], 'secret');
+        $request = $this->getMock(RequestInterface::class);
+        $processor = $this->getMockBuilder(IrisNotificationProcessor::class)
+            ->setConstructorArgs([
+                $this->orderFactory,
+                $this->orderRepository,
+                $this->quoteRepository,
+                $this->cartManagement,
+                $this->epConfig,
+                $this->logger,
+                $this->objectManager,
+            ])
+            ->setMethods(['getRawRequestBody'])
+            ->getMock();
+
+        $request->expects(static::never())
+            ->method('getParam');
+        $processor->expects(static::once())
+            ->method('getRawRequestBody')
+            ->with($request)
+            ->willReturn(json_encode([
+                'hash' => $hash,
+                'token' => 'secure_token',
+                'md' => 'checkout_qid_42',
+                'error_status' => '',
+                'error_message' => '',
+            ]));
+        $this->epConfig->expects(static::once())
+            ->method('getSecretKey')
+            ->willReturn('secret');
+
+        $result = $this->invokePrivateMethod($processor, 'extractPayload', [$request]);
+
+        static::assertTrue($result['success']);
+        static::assertSame($hash, $result['hash']);
+        static::assertSame('secure_token', $result['token']);
+        static::assertSame('checkout_qid_42', $result['md']);
+        static::assertFalse($result['has_error']);
+    }
+
     public function testProcessNotificationReturnsAlreadyProcessedForPaidOrder()
     {
         $token = 'secure_token';
