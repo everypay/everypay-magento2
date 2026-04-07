@@ -589,7 +589,7 @@ class IrisNotificationProcessor
             }
 
             $shippingAddress = $quote->getShippingAddress();
-            if ($shippingAddress && $quote->getIsVirtual() === false && $billingAddress) {
+            if ($shippingAddress && !$quote->isVirtual() && $billingAddress) {
                 if (!$shippingAddress->getEmail()) {
                     $shippingAddress->setEmail($quote->getCustomerEmail());
                 }
