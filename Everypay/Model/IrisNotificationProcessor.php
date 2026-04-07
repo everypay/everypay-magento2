@@ -1,8 +1,10 @@
 <?php
+
 /**
  * Copyright © 2025 Everypay. All rights reserved.
  * See COPYING.txt for license details.
  */
+
 namespace Everypay\Everypay\Model;
 
 use Everypay\Everypay;
@@ -313,7 +315,7 @@ class IrisNotificationProcessor
         $payment->setLastTransId($paymentToken);
         $payment->setIsTransactionClosed(false);
         $payment->registerCaptureNotification($order->getGrandTotal());
-        $payment->setAdditionalInformation('payment_type', 'IRIS Bank Payment');
+        $payment->setAdditionalInformation('payment_type', 'IRIS');
 
         if (!empty($sourceToken)) {
             $payment->setAdditionalInformation('iris_token', $sourceToken);
