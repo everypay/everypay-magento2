@@ -8,7 +8,7 @@ namespace Everypay\Everypay\Controller\Iris;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Action\HttpGetActionInterface;
-use Magento\Framework\App\ObjectManager;
+use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
@@ -24,20 +24,23 @@ class Success extends Action implements HttpGetActionInterface
      * @var OrderRepositoryInterface
      */
     private $orderRepository;
+    private $checkoutSession;
 
     public function __construct(
         Context $context,
         PageFactory $resultPageFactory,
-        OrderRepositoryInterface $orderRepository
+        OrderRepositoryInterface $orderRepository,
+        CheckoutSession $checkoutSession
     ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
         $this->orderRepository = $orderRepository;
+        $this->checkoutSession = $checkoutSession;
     }
 
     public function execute()
     {
-        $orderId = (int) $this->getCheckoutSession()->getLastOrderId();
+        $orderId = (int) $this->checkoutSession->getLastOrderId();
         if (!$orderId) {
             return $this->resultRedirectFactory->create()->setPath('checkout/cart');
         }
@@ -53,11 +56,6 @@ class Success extends Action implements HttpGetActionInterface
         }
 
         return $this->resultPageFactory->create();
-    }
-
-    protected function getCheckoutSession()
-    {
-        return ObjectManager::getInstance()->get(\Magento\Checkout\Model\Session::class);
     }
 
     private function isSuccessfulOrder(Order $order)
