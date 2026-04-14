@@ -100,6 +100,7 @@ class IrisNotificationProcessor
         $this->applyIrisMetadata($order, $token, $md, $payloadResult['hash']);
 
         if ($orderAlreadyPaid && (!$token || !$existingToken || $existingToken === $token)) {
+            $this->orderRepository->save($order);
             $this->logger->info('IRIS notification already processed', [
                 'source' => $source,
                 'order_id' => $order->getEntityId(),
