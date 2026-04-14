@@ -55,13 +55,17 @@ class SaleRequest implements BuilderInterface
         $removed_cards = $paymentX->getAdditionalInformation('removed_cards');
         $empty_vault = $paymentX->getAdditionalInformation('empty_vault');
         $max_installments = $paymentX->getAdditionalInformation('max_installments');
+        $paymentType = $paymentX->getAdditionalInformation('payment_type');
+        $irisToken = $paymentX->getAdditionalInformation('iris_token');
+        $skipRemoteSale = $paymentX->getAdditionalInformation('skip_remote_sale');
+        $billingAddress = $order->getBillingAddress();
 
         return [
             'TXN_TYPE' => 'S',
             'INVOICE' => $order->getOrderIncrementId(),
             'AMOUNT' => $order->getGrandTotalAmount(),
             'CURRENCY' => $order->getCurrencyCode(),
-            'EMAIL' => (isset($address))?$address->getEmail():'',
+            'EMAIL' => (isset($address) && $address->getEmail()) ? $address->getEmail() : ($billingAddress ? $billingAddress->getEmail() : ''),
             'token' => $token,
             'customer_token' => $customer_token,
             'card_token' => $card_token,
@@ -70,7 +74,10 @@ class SaleRequest implements BuilderInterface
             'customer_id' => $customer_id,
             'removed_cards' => $removed_cards,
             'empty_vault' => $empty_vault,
-            'max_installments' => $max_installments
+            'max_installments' => $max_installments,
+            'payment_type' => $paymentType,
+            'iris_token' => $irisToken,
+            'skip_remote_sale' => (bool) $skipRemoteSale
         ];
     }
 }

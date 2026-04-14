@@ -68,7 +68,7 @@ class IrisNotificationProcessor
         if (!$order || !$order->getEntityId()) {
             $this->logger->error('IRIS notification: order not found', [
                 'source' => $source,
-                'token' => $token,
+                'token' => $this->maskSensitiveValue($token),
                 'md' => $md,
             ]);
 
@@ -87,8 +87,8 @@ class IrisNotificationProcessor
             $this->logger->error('IRIS notification token conflict', [
                 'source' => $source,
                 'order_id' => $order->getEntityId(),
-                'existing_token' => $existingToken,
-                'incoming_token' => $token,
+                'existing_token' => $this->maskSensitiveValue($existingToken),
+                'incoming_token' => $this->maskSensitiveValue($token),
             ]);
 
             return [
@@ -105,7 +105,7 @@ class IrisNotificationProcessor
             $this->logger->info('IRIS notification already processed', [
                 'source' => $source,
                 'order_id' => $order->getEntityId(),
-                'token' => $token,
+                'token' => $this->maskSensitiveValue($token),
             ]);
 
             return [
@@ -126,23 +126,8 @@ class IrisNotificationProcessor
             ];
         }
 
-        $paymentToken = $this->createIrisPayment($order, $token);
+        $paymentToken = $this->finalizeVerifiedIrisPayment($order, $token, $source);
         if (empty($paymentToken)) {
-            $reloadedOrder = $this->reloadOrder($order);
-            if ($reloadedOrder && $this->isIdempotentPaidOrder($reloadedOrder, $token)) {
-                $this->logger->info('IRIS payment creation returned empty token after order was already paid', [
-                    'source' => $source,
-                    'order_id' => $reloadedOrder->getEntityId(),
-                    'has_token' => $token !== '',
-                ]);
-
-                return [
-                    'success' => true,
-                    'already_processed' => true,
-                    'order' => $reloadedOrder,
-                ];
-            }
-
             $message = __('IRIS payment failed. Please try another payment method.');
             $this->markOrderAsFailed($order, $message, $source);
 
@@ -216,7 +201,7 @@ class IrisNotificationProcessor
         }
 
         $this->logger->info('No order found for IRIS notification', [
-            'token' => $token,
+            'token' => $this->maskSensitiveValue($token),
             'md' => $md,
         ]);
 
@@ -476,34 +461,21 @@ class IrisNotificationProcessor
             if ($md) {
                 $payment->setAdditionalInformation('iris_md', $md);
             }
+            $payment->setAdditionalInformation('iris_verified', true);
+            $payment->setAdditionalInformation('skip_remote_sale', true);
             if ($token) {
                 $payment->setAdditionalInformation('iris_token', $token);
-                $payment->setAdditionalInformation('token', $token);
             }
             if ($hash) {
                 $payment->setAdditionalInformation('iris_hash', $hash);
-            }
-
-            try {
-                $quote->setIsActive(true);
-                $quote->collectTotals();
-                $this->quoteRepository->save($quote);
-
-                $orderId = $this->cartManagement->placeOrder($quoteId);
-                if ($orderId) {
-                    $order = $this->orderRepository->get($orderId);
-                    $this->applyIrisMetadata($order, $token, $md, $hash);
-                    $this->orderRepository->save($order);
-                    return $order;
-                }
-            } catch (\Exception $e) {
-                $this->logger->warning('CartManagement failed, using manual IRIS order creation: ' . $e->getMessage());
             }
 
             if (!$quote->getReservedOrderId()) {
                 $quote->reserveOrderId();
             }
 
+            $quote->setIsActive(true);
+            $quote->collectTotals();
             $this->quoteRepository->save($quote);
 
             $order = $this->quoteManagement->submit($quote);
@@ -523,6 +495,28 @@ class IrisNotificationProcessor
         }
 
         return null;
+    }
+
+    private function finalizeVerifiedIrisPayment(Order $order, $token, $source)
+    {
+        $payment = $order->getPayment();
+        if (!$payment) {
+            return null;
+        }
+
+        $paymentToken = (string) ($token ?: $payment->getAdditionalInformation('iris_token'));
+        if ($paymentToken === '') {
+            $this->logger->error('IRIS verified notification is missing a usable payment token', [
+                'source' => $source,
+                'order_id' => $order->getEntityId(),
+            ]);
+
+            return null;
+        }
+
+        $this->markOrderAsPaid($order, $paymentToken, $paymentToken, $source);
+
+        return $paymentToken;
     }
 
     private function validateAndFixQuoteData($quote)

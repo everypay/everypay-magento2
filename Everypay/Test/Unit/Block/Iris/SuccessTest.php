@@ -10,45 +10,29 @@ use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
+use PHPUnit\Framework\TestCase;
 
-class SuccessTest extends \PHPUnit_Framework_TestCase
+class SuccessTest extends TestCase
 {
-    /**
-     * @var Context|\PHPUnit_Framework_MockObject_MockObject
-     */
-    protected $context;
+    private Context $context;
+    private OrderRepositoryInterface $orderRepository;
+    private CheckoutSession $checkoutSession;
 
-    /**
-     * @var OrderRepositoryInterface|\PHPUnit_Framework_MockObject_MockObject
-     */
-    protected $orderRepository;
-
-    /**
-     * @var CheckoutSession|\PHPUnit_Framework_MockObject_MockObject
-     */
-    protected $checkoutSession;
-
-    public function setUp()
+    protected function setUp(): void
     {
-        $this->context = $this->getMockBuilder(Context::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-        $this->orderRepository = $this->getMock(OrderRepositoryInterface::class);
-        $this->checkoutSession = $this->getMockBuilder(CheckoutSession::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->context = $this->createMock(Context::class);
+        $this->orderRepository = $this->createMock(OrderRepositoryInterface::class);
+        $this->checkoutSession = $this->createMock(CheckoutSession::class);
     }
 
-    public function testGetOrderUsesCheckoutSessionOrderId()
+    public function testGetOrderUsesCheckoutSessionOrderId(): void
     {
-        $order = $this->getMockBuilder(Order::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $order = $this->createMock(Order::class);
 
-        $this->checkoutSession->expects(static::once())
+        $this->checkoutSession->expects(self::once())
             ->method('getLastOrderId')
             ->willReturn(11);
-        $this->orderRepository->expects(static::once())
+        $this->orderRepository->expects(self::once())
             ->method('get')
             ->with(11)
             ->willReturn($order);
@@ -58,21 +42,21 @@ class SuccessTest extends \PHPUnit_Framework_TestCase
                 $this->context,
                 $this->orderRepository,
             ])
-            ->setMethods(['getCheckoutSession'])
+            ->onlyMethods(['getCheckoutSession'])
             ->getMock();
-        $block->expects(static::once())
+        $block->expects(self::once())
             ->method('getCheckoutSession')
             ->willReturn($this->checkoutSession);
 
-        static::assertSame($order, $block->getOrder());
+        self::assertSame($order, $block->getOrder());
     }
 
-    public function testGetOrderReturnsNullWithoutCheckoutSessionOrderId()
+    public function testGetOrderReturnsNullWithoutCheckoutSessionOrderId(): void
     {
-        $this->checkoutSession->expects(static::once())
+        $this->checkoutSession->expects(self::once())
             ->method('getLastOrderId')
             ->willReturn(0);
-        $this->orderRepository->expects(static::never())
+        $this->orderRepository->expects(self::never())
             ->method('get');
 
         $block = $this->getMockBuilder(Success::class)
@@ -80,12 +64,12 @@ class SuccessTest extends \PHPUnit_Framework_TestCase
                 $this->context,
                 $this->orderRepository,
             ])
-            ->setMethods(['getCheckoutSession'])
+            ->onlyMethods(['getCheckoutSession'])
             ->getMock();
-        $block->expects(static::once())
+        $block->expects(self::once())
             ->method('getCheckoutSession')
             ->willReturn($this->checkoutSession);
 
-        static::assertNull($block->getOrder());
+        self::assertNull($block->getOrder());
     }
 }
