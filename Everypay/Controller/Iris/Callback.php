@@ -146,13 +146,13 @@ class Callback extends Action implements HttpGetActionInterface, HttpPostActionI
     public function execute()
     {
         $this->response->setNoCacheHeaders();
-        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $request = $this->getRequest();
 
-        if ($method === 'GET') {
+        if ($request->isGet()) {
             return $this->handleGetCallback();
         }
 
-        if ($method !== 'POST') {
+        if (!$request->isPost()) {
             $this->response->setHttpResponseCode(405);
             $this->response->setHeader('Content-Type', 'application/json', true);
             $this->response->setBody(json_encode(['success' => false, 'message' => 'Method Not Allowed']));
