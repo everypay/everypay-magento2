@@ -15,11 +15,9 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\ObjectManagerInterface;
 use Magento\Quote\Api\CartManagementInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Quote\Model\QuoteManagement;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
-use Magento\Sales\Model\Order\Address;
-use Magento\Sales\Model\Order\Item;
-use Magento\Sales\Model\Order\Payment as OrderPayment;
 use Magento\Sales\Model\OrderFactory;
 use Psr\Log\LoggerInterface;
 
@@ -29,6 +27,7 @@ class IrisNotificationProcessor
     private $orderRepository;
     private $quoteRepository;
     private $cartManagement;
+    private $quoteManagement;
     private $epConfig;
     private $logger;
     private $objectManager;
@@ -38,6 +37,7 @@ class IrisNotificationProcessor
         OrderRepositoryInterface $orderRepository,
         CartRepositoryInterface $quoteRepository,
         CartManagementInterface $cartManagement,
+        QuoteManagement $quoteManagement,
         EverypayConfig $epConfig,
         LoggerInterface $logger,
         ObjectManagerInterface $objectManager
@@ -46,6 +46,7 @@ class IrisNotificationProcessor
         $this->orderRepository = $orderRepository;
         $this->quoteRepository = $quoteRepository;
         $this->cartManagement = $cartManagement;
+        $this->quoteManagement = $quoteManagement;
         $this->epConfig = $epConfig;
         $this->logger = $logger;
         $this->objectManager = $objectManager;
@@ -489,7 +490,21 @@ class IrisNotificationProcessor
                 $this->logger->warning('CartManagement failed, using manual IRIS order creation: ' . $e->getMessage());
             }
 
-            return $this->createOrderManually($quote, $token, $md, $hash);
+            if (!$quote->getReservedOrderId()) {
+                $quote->reserveOrderId();
+            }
+
+            $this->quoteRepository->save($quote);
+
+            $order = $this->quoteManagement->submit($quote);
+            if (!$order || !$order->getEntityId()) {
+                throw new LocalizedException(__('IRIS quote submission failed.'));
+            }
+
+            $this->applyIrisMetadata($order, $token, $md, $hash);
+            $this->orderRepository->save($order);
+
+            return $order;
         } catch (\Exception $e) {
             $this->logger->error('IRIS: Failed to create order from quote', [
                 'quote_id' => $quoteId,
@@ -498,82 +513,6 @@ class IrisNotificationProcessor
         }
 
         return null;
-    }
-
-    private function createOrderManually($quote, $token, $md, $hash)
-    {
-        try {
-            $order = $this->orderFactory->create();
-            $order->setQuoteId($quote->getId());
-            $order->setStoreId($quote->getStoreId());
-            $order->setCustomerId($quote->getCustomerId());
-            $order->setCustomerEmail($quote->getCustomerEmail());
-            $order->setCustomerFirstname($quote->getCustomerFirstname());
-            $order->setCustomerLastname($quote->getCustomerLastname());
-            $order->setCustomerIsGuest($quote->getCustomerIsGuest());
-            $order->setState(Order::STATE_PENDING_PAYMENT);
-            $order->setStatus(Order::STATE_PENDING_PAYMENT);
-            $order->setSubtotal($quote->getSubtotal());
-            $order->setBaseSubtotal($quote->getBaseSubtotal());
-            $order->setGrandTotal($quote->getGrandTotal());
-            $order->setBaseGrandTotal($quote->getBaseGrandTotal());
-            $order->setShippingAmount($quote->getShippingAddress()->getShippingAmount());
-            $order->setBaseShippingAmount($quote->getShippingAddress()->getBaseShippingAmount());
-            $order->setShippingDescription($quote->getShippingAddress()->getShippingDescription());
-            $order->setShippingMethod($quote->getShippingAddress()->getShippingMethod());
-            $order->setTaxAmount($quote->getShippingAddress()->getTaxAmount());
-            $order->setBaseTaxAmount($quote->getShippingAddress()->getBaseTaxAmount());
-            $order->setShippingTaxAmount($quote->getShippingAddress()->getShippingTaxAmount());
-            $order->setBaseShippingTaxAmount($quote->getShippingAddress()->getBaseShippingTaxAmount());
-            $order->setDiscountAmount($quote->getShippingAddress()->getDiscountAmount());
-            $order->setBaseDiscountAmount($quote->getShippingAddress()->getBaseDiscountAmount());
-            $order->setDiscountDescription($quote->getShippingAddress()->getDiscountDescription());
-            $order->setOrderCurrencyCode($quote->getQuoteCurrencyCode());
-            $order->setBaseCurrencyCode($quote->getBaseCurrencyCode());
-
-            foreach ($quote->getAllVisibleItems() as $quoteItem) {
-                $orderItem = $this->objectManager->create(Item::class);
-                $orderItem->setQuoteItemId($quoteItem->getId());
-                $orderItem->setProductId($quoteItem->getProductId());
-                $orderItem->setSku($quoteItem->getSku());
-                $orderItem->setName($quoteItem->getName());
-                $orderItem->setQtyOrdered($quoteItem->getQty());
-                $orderItem->setPrice($quoteItem->getPrice());
-                $orderItem->setBasePrice($quoteItem->getBasePrice());
-                $orderItem->setRowTotal($quoteItem->getRowTotal());
-                $orderItem->setBaseRowTotal($quoteItem->getBaseRowTotal());
-                $order->addItem($orderItem);
-            }
-
-            $billingAddress = $this->objectManager->create(Address::class);
-            $billingAddress->setData($quote->getBillingAddress()->getData());
-            $billingAddress->setAddressType(Address::TYPE_BILLING);
-            $order->setBillingAddress($billingAddress);
-
-            if (!$quote->isVirtual()) {
-                $shippingAddress = $this->objectManager->create(Address::class);
-                $shippingAddress->setData($quote->getShippingAddress()->getData());
-                $shippingAddress->setAddressType(Address::TYPE_SHIPPING);
-                $order->setShippingAddress($shippingAddress);
-            }
-
-            $orderPayment = $this->objectManager->create(OrderPayment::class);
-            $orderPayment->setMethod('everypay');
-            $order->setPayment($orderPayment);
-
-            $savedOrder = $this->orderRepository->save($order);
-            $this->applyIrisMetadata($savedOrder, $token, $md, $hash);
-            $this->addCommentOnce($savedOrder, 'IRIS order created from quote fallback.');
-            $this->orderRepository->save($savedOrder);
-
-            $quote->setIsActive(false);
-            $this->quoteRepository->save($quote);
-
-            return $savedOrder;
-        } catch (\Exception $e) {
-            $this->logger->error('IRIS manual order creation failed: ' . $e->getMessage());
-            return null;
-        }
     }
 
     private function validateAndFixQuoteData($quote)
