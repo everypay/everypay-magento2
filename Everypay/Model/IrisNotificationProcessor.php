@@ -677,8 +677,12 @@ class IrisNotificationProcessor
 
             $response = Payment::create($params);
 
-            $this->logger->debug('IRIS Payment Request', ['params' => $params]);
-            $this->logger->debug('IRIS Payment Response', ['response' => $response]);
+            $this->logger->debug('IRIS Payment Request', [
+                'params' => $this->getSafeIrisPaymentRequestLog($params),
+            ]);
+            $this->logger->debug('IRIS Payment Response', [
+                'response' => $this->getSafeIrisPaymentResponseLog($response),
+            ]);
 
             if (isset($response->error)) {
                 throw new \Exception($response->error->message ?? 'Payment creation failed');
@@ -725,5 +729,53 @@ class IrisNotificationProcessor
         $existingToken = (string) $payment->getAdditionalInformation('iris_token');
 
         return !$token || !$existingToken || $existingToken === $token;
+    }
+
+    private function getSafeIrisPaymentRequestLog(array $params)
+    {
+        return [
+            'amount' => $params['amount'] ?? null,
+            'description' => $params['description'] ?? null,
+            'currency' => $params['currency'] ?? null,
+            'country' => $params['country'] ?? null,
+            'token' => $this->maskSensitiveValue($params['token'] ?? null),
+            'payee_email' => $this->maskEmailValue($params['payee_email'] ?? null),
+            'payee_phone' => $this->maskSensitiveValue($params['payee_phone'] ?? null),
+        ];
+    }
+
+    private function getSafeIrisPaymentResponseLog($response)
+    {
+        return [
+            'status' => $response->status ?? null,
+            'payment_state' => $response->payment_state ?? null,
+            'token' => $this->maskSensitiveValue($response->token ?? null),
+            'error' => isset($response->error) ? [
+                'code' => $response->error->code ?? null,
+                'message' => $response->error->message ?? null,
+            ] : null,
+        ];
+    }
+
+    private function maskSensitiveValue($value)
+    {
+        if (!is_string($value) || $value === '') {
+            return $value;
+        }
+
+        if (strlen($value) <= 10) {
+            return str_repeat('*', strlen($value));
+        }
+
+        return substr($value, 0, 6) . '***' . substr($value, -4);
+    }
+
+    private function maskEmailValue($value)
+    {
+        if (!is_string($value) || $value === '' || strpos($value, '@') === false) {
+            return $this->maskSensitiveValue($value);
+        }
+
+        return preg_replace('/(^.).*(@.*$)/', '$1***$2', $value);
     }
 }
