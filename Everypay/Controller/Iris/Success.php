@@ -8,6 +8,7 @@ namespace Everypay\Everypay\Controller\Iris;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\App\ObjectManager;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\View\Result\PageFactory;
 use Magento\Sales\Api\OrderRepositoryInterface;
@@ -30,12 +31,12 @@ class Success extends Action implements HttpGetActionInterface
         Context $context,
         PageFactory $resultPageFactory,
         OrderRepositoryInterface $orderRepository,
-        CheckoutSession $checkoutSession
+        ?CheckoutSession $checkoutSession = null
     ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
         $this->orderRepository = $orderRepository;
-        $this->checkoutSession = $checkoutSession;
+        $this->checkoutSession = $checkoutSession ?: ObjectManager::getInstance()->get(CheckoutSession::class);
     }
 
     public function execute()
