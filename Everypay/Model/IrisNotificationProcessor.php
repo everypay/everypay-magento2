@@ -167,13 +167,14 @@ class IrisNotificationProcessor
     {
         if (!empty($token)) {
             try {
+                $escapedToken = $this->escapeLikeValue($token);
                 $orderCollection = $this->orderFactory->create()->getCollection()
                     ->join(
                         ['payment' => 'sales_order_payment'],
                         'main_table.entity_id = payment.parent_id',
                         []
                     )
-                    ->addFieldToFilter('payment.additional_information', ['like' => '%"iris_token":"' . $token . '"%'])
+                    ->addFieldToFilter('payment.additional_information', ['like' => '%"iris_token":"' . $escapedToken . '"%'])
                     ->setPageSize(1);
 
                 if ($orderCollection->getSize() > 0) {
@@ -447,6 +448,15 @@ class IrisNotificationProcessor
         }
 
         $order->addCommentToStatusHistory($comment);
+    }
+
+    private function escapeLikeValue($value)
+    {
+        return str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            (string) $value
+        );
     }
 
     private function createOrderFromQuote($quoteId, $token, $md, $hash)
