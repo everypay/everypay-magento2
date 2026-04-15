@@ -11,7 +11,7 @@ let EverypayModal = function () {
                     this.createHtml();
                     this.setEvents();
                 } catch (e) {
-                    console.log(e)
+                    console.error('Everypay modal initialization failed', e);
                 }
             };
 

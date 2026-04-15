@@ -84,9 +84,6 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
         // CRITICAL: Set up SameSite=None cookies BEFORE redirecting to payment gateway
         $this->setupSecureCookies();
 
-        // Debug session info at start of CreateSession
-        $this->debugSessionInfo('IRIS CreateSession Start');
-
         $result = $this->resultFactory->create(ResultFactory::TYPE_JSON);
 
         try {
@@ -262,37 +259,6 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
     }
 
     /**
-     * Debug session information
-     */
-    protected function debugSessionInfo($context)
-    {
-        $sessionId = session_id();
-        $magentoSessionId = $this->checkoutSession->getSessionId();
-
-        $debug = [
-            'context' => $context,
-            'php_session_id' => $this->maskSensitiveValue($sessionId),
-            'magento_session_id' => $this->maskSensitiveValue($magentoSessionId),
-            'session_name' => session_name(),
-            'cookie_params' => session_get_cookie_params(),
-        ];
-
-        try {
-            $debug['quote_id'] = $this->checkoutSession->getQuoteId();
-            $quote = $this->checkoutSession->getQuote();
-            $debug['quote_exists'] = $quote && $quote->getId();
-            $debug['quote_grand_total'] = $quote ? $quote->getGrandTotal() : null;
-        } catch (\Exception $e) {
-            $debug['session_error'] = $e->getMessage();
-        }
-
-        $this->logger->info('Session Debug', $debug);
-
-        // Output to stdout for Docker logs
-        error_log('IRIS DEBUG [' . $context . ']: ' . json_encode($debug));
-    }
-
-    /**
      * Set up SameSite=None cookies for payment gateway compatibility
      * Called BEFORE redirecting to payment gateway to ensure cookies work on return
      */
@@ -324,16 +290,10 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                         ]
                     );
 
-                    error_log('PAYMENT GATEWAY SETUP: Set SameSite=None;Secure cookie for session: ' . $sessionId);
-                    error_log('PAYMENT GATEWAY SETUP: Set backup cookie for UAT compatibility');
-                } else {
-                    error_log('PAYMENT GATEWAY SETUP: No session ID found');
                 }
-            } else {
-                error_log('PAYMENT GATEWAY SETUP: Cannot set secure cookies on non-HTTPS');
             }
         } catch (\Exception $e) {
-            error_log('PAYMENT GATEWAY SETUP: Cookie setting failed: ' . $e->getMessage());
+            $this->logger->warning('PAYMENT GATEWAY SETUP: Cookie setting failed: ' . $e->getMessage());
         }
     }
 

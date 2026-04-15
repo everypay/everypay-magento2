@@ -3,7 +3,6 @@ let everypayUrl = 'https://js.everypay.gr/v3';
 let iframeSource = "Magento 2 CMS";
 
 if (isSandboxMode && isSandboxMode == 1) {
-    console.log('Everypay sandbox mode enabled');
     everypayUrl = 'https://sandbox-js.everypay.gr/v3';
 }
 
