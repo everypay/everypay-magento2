@@ -3,14 +3,14 @@ let everypayUrl = 'https://js.everypay.gr/v3';
 let iframeSource = "Magento 2 CMS";
 
 if (isSandboxMode && isSandboxMode == 1) {
-    console.log('Everypay sandbox mode enabled');
     everypayUrl = 'https://sandbox-js.everypay.gr/v3';
 }
 
 define([
     'EverypayHelpers',
+    'mage/url',
     everypayUrl
-], function(Helpers){
+], function(Helpers, urlBuilder){
 
     return {
 
@@ -80,10 +80,10 @@ define([
                 // Add IRIS if enabled
                 if (window.checkoutConfig.payment.everypay.isIrisEnabled && window.checkoutConfig.payment.everypay.iris) {
                     let irisConfig = window.checkoutConfig.payment.everypay.iris;
-                    let callbackUrl = window.location.origin + '/everypay/iris/callback';
-                    
+
                     // Generate a unique md reference for this transaction
                     let md = 'magento_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    let callbackUrl = urlBuilder.build('everypay/iris/callback') + '?md=' + encodeURIComponent(md);
                     
                     let iris = {
                         merchantName: irisConfig.merchantName,
@@ -95,7 +95,7 @@ define([
                     // Create IRIS session handler
                     Object.defineProperty(iris, 'sessionHandler', {
                         value: Helpers.createIrisSessionHandler({
-                            ajaxUrl: window.location.origin + '/everypay/iris/createsession',
+                            ajaxUrl: urlBuilder.build('everypay/iris/createsession'),
                             amount: amount,
                             currency: billingData.currency || 'EUR',
                             country: irisConfig.country,

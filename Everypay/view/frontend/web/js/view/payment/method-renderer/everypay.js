@@ -172,7 +172,7 @@ define(
                         this.billingData.country = magentoBillingData.countryId;
                     }
                 } catch (e) {
-                    console.log(e)
+                    console.error('Everypay billing data mapping failed', e);
                 }
 
             },
@@ -199,7 +199,7 @@ define(
                         this.shippingData.phone = magentoShippingData.telephone;
                     }
                 } catch (e) {
-                    console.log(e)
+                    console.error('Everypay shipping data mapping failed', e);
                 }
 
             },

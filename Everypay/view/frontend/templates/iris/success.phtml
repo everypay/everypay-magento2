@@ -1,0 +1,20 @@
+<?php
+/**
+ * @var \Everypay\Everypay\Block\Iris\Success $block
+ */
+$orderId = $block->getOrderIncrementId();
+?>
+<div class="checkout-success">
+    <?php if ($orderId): ?>
+        <p><?= $block->escapeHtml(__('Your order # is: %1.', $orderId)) ?></p>
+        <p><?= $block->escapeHtml(__('We\'ll email you an order confirmation with details and tracking info.')) ?></p>
+    <?php endif; ?>
+
+    <div class="actions-toolbar">
+        <div class="primary">
+            <a class="action primary continue" href="<?= $block->escapeUrl($block->getContinueUrl()) ?>">
+                <span><?= $block->escapeHtml(__('Continue Shopping')) ?></span>
+            </a>
+        </div>
+    </div>
+</div>

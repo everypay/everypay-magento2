@@ -84,9 +84,6 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
         // CRITICAL: Set up SameSite=None cookies BEFORE redirecting to payment gateway
         $this->setupSecureCookies();
 
-        // Debug session info at start of CreateSession
-        $this->debugSessionInfo('IRIS CreateSession Start');
-
         $result = $this->resultFactory->create(ResultFactory::TYPE_JSON);
 
         try {
@@ -135,12 +132,15 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
             }
 
             $callbackUrl = $this->_url->getUrl('everypay/iris/callback', ['_secure' => true]);
+            $webhookUrl = $this->_url->getUrl('everypay/iris/webhook', ['_secure' => true]);
+            $callbackQuery = [];
 
             $params = [
                 'amount' => $amount,
                 'currency' => strtoupper($currency),
                 'country' => strtoupper($country),
                 'callback_url' => $callbackUrl,
+                'webhook_url' => $webhookUrl,
             ];
 
             // Store md reference and quote ID for callback lookup
@@ -150,6 +150,16 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                 $mdWithQuote = $md . '_qid_' . $quote->getId();
                 $params['md'] = $mdWithQuote;
                 $quote->setData('everypay_iris_md', $mdWithQuote);
+                $this->checkoutSession->setData('everypay_iris_last_md', $mdWithQuote);
+                $this->checkoutSession->setData('everypay_iris_last_quote_id', $quote->getId());
+                $callbackQuery['md'] = $mdWithQuote;
+            }
+
+            if (!empty($callbackQuery)) {
+                $params['callback_url'] = $this->_url->getUrl('everypay/iris/callback', [
+                    '_secure' => true,
+                    '_query' => $callbackQuery,
+                ]);
             }
 
             if (!empty($uuid)) {
@@ -171,8 +181,8 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
             // Make API request to create IRIS session
             $response = $this->createIrisSession($params);
 
-            $this->logger->debug('IRIS Session Request', ['params' => $params]);
-            $this->logger->debug('IRIS Session Response', ['response' => $response]);
+            $this->logger->debug('IRIS Session Request', ['params' => $this->getSafeSessionRequestLog($params)]);
+            $this->logger->debug('IRIS Session Response', ['response' => $this->getSafeSessionResponseLog($response)]);
 
             if (!isset($response['signature'])) {
                 $message = isset($response['error']['message'])
@@ -249,37 +259,6 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
     }
 
     /**
-     * Debug session information
-     */
-    protected function debugSessionInfo($context)
-    {
-        $sessionId = session_id();
-        $magentoSessionId = $this->checkoutSession->getSessionId();
-
-        $debug = [
-            'context' => $context,
-            'php_session_id' => $sessionId,
-            'magento_session_id' => $magentoSessionId,
-            'session_name' => session_name(),
-            'cookie_params' => session_get_cookie_params(),
-        ];
-
-        try {
-            $debug['quote_id'] = $this->checkoutSession->getQuoteId();
-            $quote = $this->checkoutSession->getQuote();
-            $debug['quote_exists'] = $quote && $quote->getId();
-            $debug['quote_grand_total'] = $quote ? $quote->getGrandTotal() : null;
-        } catch (\Exception $e) {
-            $debug['session_error'] = $e->getMessage();
-        }
-
-        $this->logger->info('Session Debug', $debug);
-
-        // Output to stdout for Docker logs
-        error_log('IRIS DEBUG [' . $context . ']: ' . json_encode($debug));
-    }
-
-    /**
      * Set up SameSite=None cookies for payment gateway compatibility
      * Called BEFORE redirecting to payment gateway to ensure cookies work on return
      */
@@ -311,16 +290,10 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                         ]
                     );
 
-                    error_log('PAYMENT GATEWAY SETUP: Set SameSite=None;Secure cookie for session: ' . $sessionId);
-                    error_log('PAYMENT GATEWAY SETUP: Set backup cookie for UAT compatibility');
-                } else {
-                    error_log('PAYMENT GATEWAY SETUP: No session ID found');
                 }
-            } else {
-                error_log('PAYMENT GATEWAY SETUP: Cannot set secure cookies on non-HTTPS');
             }
         } catch (\Exception $e) {
-            error_log('PAYMENT GATEWAY SETUP: Cookie setting failed: ' . $e->getMessage());
+            $this->logger->warning('PAYMENT GATEWAY SETUP: Cookie setting failed: ' . $e->getMessage());
         }
     }
 
@@ -364,7 +337,7 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
         try {
             $this->logger->info('Forcing quote data persistence before IRIS redirect', [
                 'quote_id' => $quote->getId(),
-                'current_email' => $quote->getCustomerEmail(),
+                'current_email' => $this->maskEmailValue($quote->getCustomerEmail()),
                 'current_firstname' => $quote->getCustomerFirstname(),
                 'current_lastname' => $quote->getCustomerLastname(),
                 'is_guest' => $quote->getCustomerIsGuest()
@@ -383,10 +356,10 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
 
             $this->logger->info('Quote data persisted successfully', [
                 'quote_id' => $quote->getId(),
-                'email' => $quote->getCustomerEmail(),
+                'email' => $this->maskEmailValue($quote->getCustomerEmail()),
                 'firstname' => $quote->getCustomerFirstname(),
                 'lastname' => $quote->getCustomerLastname(),
-                'billing_email' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getEmail() : null,
+                'billing_email' => $quote->getBillingAddress() ? $this->maskEmailValue($quote->getBillingAddress()->getEmail()) : null,
                 'billing_firstname' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getFirstname() : null,
                 'billing_lastname' => $quote->getBillingAddress() ? $quote->getBillingAddress()->getLastname() : null
             ]);
@@ -396,5 +369,57 @@ class CreateSession extends Action implements HttpPostActionInterface, CsrfAware
                 'exception' => $e
             ]);
         }
+    }
+
+    private function getSafeSessionRequestLog(array $params): array
+    {
+        return [
+            'amount' => $params['amount'] ?? null,
+            'currency' => $params['currency'] ?? null,
+            'country' => $params['country'] ?? null,
+            'callback_url' => $params['callback_url'] ?? null,
+            'webhook_url' => $params['webhook_url'] ?? null,
+            'md' => $params['md'] ?? null,
+            'uuid' => $params['uuid'] ?? null,
+        ];
+    }
+
+    private function getSafeSessionResponseLog(array $response): array
+    {
+        return [
+            'signature' => $this->maskSensitiveValue($response['signature'] ?? null),
+            'uuid' => $response['uuid'] ?? null,
+            'md' => $response['md'] ?? null,
+            'date_created' => $response['date_created'] ?? null,
+            'expiration_date' => $response['expiration_date'] ?? null,
+            'amount' => $response['amount'] ?? null,
+            'status' => $response['status'] ?? null,
+            'token' => $this->maskSensitiveValue($response['token'] ?? null),
+            'error' => isset($response['error']) ? [
+                'message' => $response['error']['message'] ?? null,
+            ] : null,
+        ];
+    }
+
+    private function maskSensitiveValue($value)
+    {
+        if (!is_string($value) || $value === '') {
+            return $value;
+        }
+
+        if (strlen($value) <= 10) {
+            return str_repeat('*', strlen($value));
+        }
+
+        return substr($value, 0, 6) . '***' . substr($value, -4);
+    }
+
+    private function maskEmailValue($value)
+    {
+        if (!is_string($value) || $value === '' || strpos($value, '@') === false) {
+            return $this->maskSensitiveValue($value);
+        }
+
+        return preg_replace('/(^.).*(@.*$)/', '$1***$2', $value);
     }
 }

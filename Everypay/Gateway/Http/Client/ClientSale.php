@@ -86,11 +86,28 @@ class ClientSale implements ClientInterface
      */
     public function placeRequest(TransferInterface $transferObject): array
     {
+        $requestData = $transferObject->getBody();
         $this->logger->debug('everypay_logs', [
-            'pre_send_request' => $transferObject->getBody()
+            'pre_send_request' => $this->getSafeRequestLog($requestData)
         ]);
 
-        $requestData = $transferObject->getBody();
+        if ($this->isVerifiedIrisSale($requestData)) {
+            $response = [
+                'RESULT_CODE' => self::SUCCESS,
+                'TXN_ID' => $requestData['iris_token'] ?? $requestData['token'] ?? '',
+                'CUSTOMER_TOKEN' => '',
+                'CARD_TOKEN' => '',
+                'FRIENDLY_NAME' => '',
+            ];
+
+            $this->logger->debug('everypay_logs', [
+                'api_request' => $this->getSafeRequestLog($requestData),
+                'api_response' => $this->getSafeResponseLog($response)
+            ]);
+
+            return $response;
+        }
+
         $trxType = $this->checkTrxType($requestData);
 
         Everypay::$isTest = $this->sandboxMode;
@@ -142,8 +159,6 @@ class ClientSale implements ClientInterface
 
         $response = Payment::create($params);
 
-        $this->logger->debug('PAYMENT AFTER', [$response]);
-
         if (isset($response->error)) {
             $rcode = 0;
             $pmt = 'error';
@@ -175,8 +190,8 @@ class ClientSale implements ClientInterface
         $response = $this->generateResponseForCode($rcode, $pmt);
 
         $this->logger->debug('everypay_logs', [
-            'api_request' => $transferObject->getBody(),
-            'api_response' => $response
+            'api_request' => $this->getSafeRequestLog($requestData),
+            'api_response' => $this->getSafeResponseLog($response)
         ]);
 
         return $response;
@@ -258,6 +273,64 @@ class ClientSale implements ClientInterface
         }
 
         return [];
+    }
+
+    private function isVerifiedIrisSale(array $requestData): bool
+    {
+        return (($requestData['payment_type'] ?? '') === 'IRIS')
+            && !empty($requestData['skip_remote_sale'])
+            && !empty($requestData['iris_token']);
+    }
+
+    private function getSafeRequestLog(array $requestData): array
+    {
+        return [
+            'TXN_TYPE' => $requestData['TXN_TYPE'] ?? null,
+            'INVOICE' => $requestData['INVOICE'] ?? null,
+            'AMOUNT' => $requestData['AMOUNT'] ?? null,
+            'CURRENCY' => $requestData['CURRENCY'] ?? null,
+            'EMAIL' => $this->maskEmailValue($requestData['EMAIL'] ?? null),
+            'token' => $this->maskSensitiveValue($requestData['token'] ?? null),
+            'iris_token' => $this->maskSensitiveValue($requestData['iris_token'] ?? null),
+            'customer_token' => $this->maskSensitiveValue($requestData['customer_token'] ?? null),
+            'card_token' => $this->maskSensitiveValue($requestData['card_token'] ?? null),
+            'payment_type' => $requestData['payment_type'] ?? null,
+            'skip_remote_sale' => !empty($requestData['skip_remote_sale']),
+        ];
+    }
+
+    private function getSafeResponseLog(array $response): array
+    {
+        return [
+            'RESULT_CODE' => $response['RESULT_CODE'] ?? null,
+            'TXN_ID' => $this->maskSensitiveValue($response['TXN_ID'] ?? null),
+            'CUSTOMER_TOKEN' => $this->maskSensitiveValue($response['CUSTOMER_TOKEN'] ?? null),
+            'CARD_TOKEN' => $this->maskSensitiveValue($response['CARD_TOKEN'] ?? null),
+            'FRIENDLY_NAME' => $response['FRIENDLY_NAME'] ?? null,
+            'FRAUD_MSG_LIST' => $response['FRAUD_MSG_LIST'] ?? null,
+        ];
+    }
+
+    private function maskSensitiveValue($value)
+    {
+        if (!is_string($value) || $value === '') {
+            return $value;
+        }
+
+        if (strlen($value) <= 10) {
+            return str_repeat('*', strlen($value));
+        }
+
+        return substr($value, 0, 6) . '***' . substr($value, -4);
+    }
+
+    private function maskEmailValue($value)
+    {
+        if (!is_string($value) || $value === '' || strpos($value, '@') === false) {
+            return $this->maskSensitiveValue($value);
+        }
+
+        return preg_replace('/(^.).*(@.*$)/', '$1***$2', $value);
     }
 
     private function updateCustomer($customer_id, $saved_card, $vault)
